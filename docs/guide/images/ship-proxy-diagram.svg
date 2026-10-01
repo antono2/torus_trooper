@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="520" viewBox="0 0 620 520" role="img" aria-labelledby="title desc">
+  <title id="title">Ship collision and exhaust diagram</title>
+  <desc id="desc">A player ship viewed from above with a cyan collision proxy and two amber exhaust attachment points.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#f3f7f5"/></marker>
+  </defs>
+  <rect width="620" height="520" fill="#192233"/>
+  <text x="30" y="45" fill="#eef8f5" font-family="sans-serif" font-size="23" font-weight="700">Gameplay proxies</text>
+  <text x="30" y="72" fill="#a9beca" font-family="sans-serif" font-size="15">Same seeded definition; simpler collision test</text>
+  <path d="M310 143 L283 240 L185 281 L271 290 L279 333 L310 295 L341 333 L349 290 L435 281 L337 240Z" fill="#b8e9ef" stroke="#efffff" stroke-width="3"/>
+  <path d="M310 145 L310 294 M283 240 L185 281 M337 240 L435 281" fill="none" stroke="#5187a6" stroke-width="7"/>
+  <rect x="210" y="175" width="200" height="170" rx="8" fill="#50e4d4" fill-opacity="0.10" stroke="#55e4d4" stroke-width="4" stroke-dasharray="12 8"/>
+  <g stroke="#ffce70" stroke-width="5" stroke-linecap="round">
+    <path d="M270 353 L286 369 M286 353 L270 369"/>
+    <path d="M334 353 L350 369 M350 353 L334 369"/>
+  </g>
+  <g fill="none" stroke="#f3f7f5" stroke-width="2.5" marker-end="url(#arrow)">
+    <path d="M40 216 L205 216"/>
+    <path d="M526 399 L355 365"/>
+    <path d="M310 136 L310 109"/>
+  </g>
+  <g fill="#eef8f5" font-family="sans-serif">
+    <text x="30" y="192" font-size="18" font-weight="700">Collision proxy</text>
+    <text x="30" y="414" font-size="15" fill="#a9beca">Not the exact mesh outline</text>
+    <text x="388" y="405" font-size="18" font-weight="700">Exhaust points</text>
+    <text x="268" y="105" font-size="16" font-weight="700">Flight direction</text>
+  </g>
+  <text x="30" y="487" fill="#a9beca" font-family="sans-serif" font-size="14">Proxy proportions are schematic; live values come from ship_geometry.v.</text>
+</svg>

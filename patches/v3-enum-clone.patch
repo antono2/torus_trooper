@@ -1,0 +1,24 @@
+diff --git a/vlib/v/transform/fn.v b/vlib/v/transform/fn.v
+index f55ea113b7..b3939b96bd 100644
+--- a/vlib/v/transform/fn.v
++++ b/vlib/v/transform/fn.v
+@@ -9650,6 +9650,9 @@ fn (mut t Transformer) make_compiler_default_clone_value(source flat.NodeId, typ
+ 	if clean.len == 0 || clean.starts_with('&') {
+ 		return source
+ 	}
++	if clean in t.enum_types {
++		return source
++	}
+ 	if clean == 'thread' || clean.starts_with('thread ') || clean == 'chan'
+ 		|| clean.starts_with('chan ') {
+ 		return source
+@@ -10161,6 +10164,9 @@ fn (t &Transformer) compiler_default_clone_type_needs_work_seen(typ string, seen
+ 	if clean.len == 0 || clean.starts_with('&') || clean in seen {
+ 		return false
+ 	}
++	if clean in t.enum_types {
++		return false
++	}
+ 	if clean == 'thread' || clean.starts_with('thread ') || clean == 'chan'
+ 		|| clean.starts_with('chan ') {
+ 		return false

@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bridge:
+    name: ${{ matrix.os }} C bridge
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Linux audio headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - name: Compile and run bridge probe (Linux)
+        if: runner.os == 'Linux'
+        run: cc -std=c99 -D_GNU_SOURCE -Iruntime runtime/audio_bridge_compile.c -o audio-bridge-probe -lpthread -ldl -lm && ./audio-bridge-probe
+      - name: Compile and run bridge probe (macOS)
+        if: runner.os == 'macOS'
+        run: cc -std=c99 -Iruntime runtime/audio_bridge_compile.c -o audio-bridge-probe -framework CoreAudio -framework AudioToolbox -framework AudioUnit -framework CoreFoundation -lpthread -lm && ./audio-bridge-probe
+      - name: Compile and run bridge probe (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $install = & $vswhere -latest -property installationPath
+          & "$install\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          cl /nologo /std:c11 /Iruntime runtime/audio_bridge_compile.c /Fe:audio-bridge-probe.exe ole32.lib uuid.lib winmm.lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./audio-bridge-probe.exe
+
+  v-tests:
+    name: V simulation and runtime tests
+    runs-on: ubuntu-latest
+    env:
+      VMODULES: ${{ github.workspace }}/modules
+      VULKAN_SDK: ${{ github.workspace }}/dependencies/Vulkan-Headers
+      V_MACOS_V3_NO_FALLBACK: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check guide links
+        run: python3 scripts/check_guide_links.py
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/vulkan
+          ref: 52a02edfff5ec4433031e7ff5f6944ae874916b7
+          path: modules/antono2/vulkan
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/opencl
+          ref: f8c3a40435ad62945ba7fd4a41d00770404cf8ab
+          path: modules/antono2/opencl
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/vulkan_memory_allocator
+          ref: 0ec4728293c2336de45729df96d12c908903e571
+          path: modules/antono2/vkmemalloc
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/memory
+          ref: c8b8affd52c18d4dae847506cc3cc5e8eb7ce16f
+          path: modules/antono2/memory
+      - uses: actions/checkout@v7
+        with:
+          repository: KhronosGroup/Vulkan-Headers
+          ref: 6802bb4733b63ed5efd3adb308a6c885ef180ea1
+          path: dependencies/Vulkan-Headers
+      - uses: actions/checkout@v7
+        with:
+          repository: vlang/v
+          ref: c9b806b294234408af3794f419439599a293a0ea
+          path: toolchain/v
+      - uses: actions/checkout@v7
+        with:
+          repository: vlang/vc
+          ref: 21490f7811a2dd366c3daa39bef8e53c1e3e5727
+          path: toolchain/v/vc
+      - uses: actions/checkout@v7
+        with:
+          repository: vlang/tccbin
+          ref: d6e7ac1b1bcc98aed734a6ecbfa8509f24606c74
+          path: toolchain/v/thirdparty/tcc
+      - name: Apply pending V3 compiler compatibility fixes
+        run: |
+          git -C toolchain/v -c user.name=CI -c user.email=ci@example.invalid fetch https://github.com/antono2/v.git fix/v3-enum-fixed-array-fn-pointer
+          test "$(git -C toolchain/v rev-parse FETCH_HEAD)" = 21ef431f41d2853d43c2acd7a7e295f9de55838e
+          git -C toolchain/v -c user.name=CI -c user.email=ci@example.invalid cherry-pick FETCH_HEAD
+          git -C toolchain/v apply "$GITHUB_WORKSPACE/patches/v3-enum-clone.patch"
+      - name: Build the pinned V3 compiler
+        run: |
+          # V's build registers GitHub problem matchers from its checkout. The
+          # compiler does not need that side effect, and suppressing it avoids
+          # a transient-path bug in setup-v.
+          env -u GITHUB_JOB make -C toolchain/v local=1
+          echo "$GITHUB_WORKSPACE/toolchain/v" >> "$GITHUB_PATH"
+      - name: Install native runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools
+      - name: Compile and validate shaders
+        run: |
+          for source in shaders/*.vert shaders/*.frag; do
+            output="/tmp/$(basename "$source").spv"
+            glslangValidator -V "$source" -o "$output"
+            spirv-val "$output"
+          done
+          for shader in shaders/*.spv; do spirv-val "$shader"; done
+      - name: Test deterministic simulation and runtime
+        run: |
+          v -cc gcc test torus_trooper_test.v
+          v -cc gcc test font5x7 sim runtime
+      - name: Compile game
+        run: v -cc gcc -o torus_trooper .
+      - name: Run Vulkan validation smoke
+        run: |
+          set +e
+          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation timeout --signal=INT --kill-after=2s 3s xvfb-run -a ./torus_trooper --no-sound --volume 0 --test-effects > validation.log 2>&1
+          status=$?
+          set -e
+          cat validation.log
+          if [[ $status -ne 0 && $status -ne 124 ]]; then exit $status; fi
+          if grep -Eiq 'validation error|vuid-|segmentation|assert|fatal' validation.log; then exit 1; fi
+      - name: Compile and smoke test with TinyCC
+        run: v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
+      - name: Test OpenCL motion backend
+        # V3 currently drops generic buffer typedefs in test files that do not
+        # call the optional OpenCL path. Keep those declarations for this suite.
+        run: v -no-skip-unused -d opencl_compute -cc gcc test sim
+      - name: Compile OpenCL backend with TinyCC
+        run: v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc . && ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
+      - name: Verify deterministic OpenCL headless run
+        run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
+
+  windows-v-tests:
+    name: Windows V simulation and runtime tests
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      VMODULES: ${{ github.workspace }}/modules
+      V_MACOS_V3_NO_FALLBACK: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/vulkan
+          # Exercise the currently released module layout used by `v install`.
+          ref: 52a02edfff5ec4433031e7ff5f6944ae874916b7
+          path: modules/antono2/vulkan
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/opencl
+          ref: f8c3a40435ad62945ba7fd4a41d00770404cf8ab
+          path: modules/antono2/opencl
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/vulkan_memory_allocator
+          ref: 0ec4728293c2336de45729df96d12c908903e571
+          path: modules/antono2/vkmemalloc
+      - uses: actions/checkout@v7
+        with:
+          repository: antono2/memory
+          ref: c8b8affd52c18d4dae847506cc3cc5e8eb7ce16f
+          path: modules/antono2/memory
+      - uses: actions/checkout@v7
+        with:
+          repository: KhronosGroup/Vulkan-Headers
+          ref: 6802bb4733b63ed5efd3adb308a6c885ef180ea1
+          path: dependencies/Vulkan-Headers
+      - uses: actions/checkout@v7
+        with:
+          repository: vlang/v
+          ref: c9b806b294234408af3794f419439599a293a0ea
+          path: toolchain/v
+      - uses: actions/checkout@v7
+        with:
+          repository: vlang/vc
+          ref: 21490f7811a2dd366c3daa39bef8e53c1e3e5727
+          path: toolchain/v/vc
+      - uses: actions/checkout@v7
+        with:
+          repository: zeux/volk
+          ref: 58689c063427f5bad4f133625049b1a3c5dd8287
+          path: dependencies/volk
+      - name: Install portable Clang MinGW
+        shell: pwsh
+        run: |
+          $Archive = Join-Path $env:RUNNER_TEMP 'llvm-mingw.zip'
+          $Uri = 'https://github.com/mstorsjo/llvm-mingw/releases/download/20260922/llvm-mingw-20260922-ucrt-x86_64.zip'
+          Invoke-WebRequest -Uri $Uri -OutFile $Archive
+          $ExpectedHash = 'E3AD77D117A4BEA19A7A3B333341824D79A5A371004A10E25B8504E7B3047666'
+          if ((Get-FileHash $Archive -Algorithm SHA256).Hash -ne $ExpectedHash) {
+            throw 'Clang MinGW archive checksum mismatch'
+          }
+          Expand-Archive -LiteralPath $Archive -DestinationPath (Join-Path $env:RUNNER_TEMP 'llvm-mingw')
+          $ToolBin = Join-Path $env:RUNNER_TEMP 'llvm-mingw/llvm-mingw-20260922-ucrt-x86_64/bin'
+          $ToolBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Apply pending V3 compiler compatibility fixes
+        shell: bash
+        run: |
+          git -C toolchain/v -c user.name=CI -c user.email=ci@example.invalid fetch https://github.com/antono2/v.git fix/v3-enum-fixed-array-fn-pointer
+          test "$(git -C toolchain/v rev-parse FETCH_HEAD)" = 21ef431f41d2853d43c2acd7a7e295f9de55838e
+          git -C toolchain/v -c user.name=CI -c user.email=ci@example.invalid cherry-pick FETCH_HEAD
+          git -C toolchain/v apply --3way --ignore-whitespace "$GITHUB_WORKSPACE/patches/v3-enum-clone.patch"
+      - name: Build the pinned V3 compiler with Clang
+        shell: cmd
+        working-directory: toolchain/v
+        env:
+          CFLAGS: -Wno-incompatible-pointer-types -Wno-incompatible-function-pointer-types
+        run: makev.bat -clang --local
+      - name: Add V compiler to PATH
+        shell: pwsh
+        run: |
+          "$env:GITHUB_WORKSPACE\toolchain\v" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install Vulkan SDK and SwiftShader test artifacts
+        shell: bash
+        run: bash modules/antono2/vulkan/.github/scripts/setup-vulkan-ci.sh 1.4.309.0 v1.2
+      - name: Match Vulkan headers to the binding registry
+        shell: pwsh
+        run: |
+          Copy-Item dependencies/Vulkan-Headers/include/vulkan/* (Join-Path $env:VULKAN_SDK 'Include/vulkan') -Recurse -Force
+          Copy-Item dependencies/Vulkan-Headers/include/vk_video/* (Join-Path $env:VULKAN_SDK 'Include/vk_video') -Recurse -Force
+      - name: Install matching Volk header
+        shell: pwsh
+        run: |
+          $Destination = Join-Path $env:VULKAN_SDK 'Include\volk'
+          New-Item -ItemType Directory -Force $Destination | Out-Null
+          Copy-Item dependencies/volk/volk.h, dependencies/volk/volk.c $Destination
+      - name: Install GLFW
+        run: vcpkg install glfw3:x64-mingw-static
+      - name: Test and build with Clang
+        shell: pwsh
+        run: |
+          $GlfwRoot = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-mingw-static'
+          $env:GLFW_INCLUDE = Join-Path $GlfwRoot 'include'
+          $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
+          $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
+          .\scripts\build_windows.ps1 -OutputPath $Executable -Verify

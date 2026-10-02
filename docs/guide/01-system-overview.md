@@ -10,7 +10,7 @@ arrangements.
 
 [`main`](../../torus_trooper.v#L7) parses launch options and chooses
 between [`run_headless`](../../torus_trooper.v#L624) and
-[`runtime.new_app`](../../runtime/app.v#L316). In graphical
+[`runtime.new_app`](../../runtime/app.v#L319). In graphical
 mode, `App.run` owns the window loop. In headless mode, `run_headless` constructs
 the same [`sim.Simulation`](../../sim/simulation.v#L267), calls `update` a requested
 number of times, then prints checksums. These are two hosts for one game model.
@@ -33,7 +33,7 @@ sequenceDiagram
 ```
 
 The loop uses a real-time accumulator in
-[`App.run`](../../runtime/app.v#L1125); it consumes one `1 / ticks_per_second` interval
+[`App.run`](../../runtime/app.v#L1177); it consumes one `1 / ticks_per_second` interval
 for each simulation update. The constant is 60 in
 [`ticks_per_second`](../../sim/simulation.v#L5). The runtime caps a single elapsed
 interval at 0.25 seconds so a long stall cannot request an unbounded catch-up
@@ -43,7 +43,7 @@ course between ticks. That fraction changes drawing, not gameplay decisions.
 ## Trace one action
 
 The platform bridge reports a bit mask from GLFW input. `input_state` in
-[`runtime/app.v`](../../runtime/app.v#L1875) converts it to `sim.InputState`, whose
+[`runtime/app.v`](../../runtime/app.v#L1928) converts it to `sim.InputState`, whose
 fields are `left`, `right`, `up`, `down`, `fire`, and `brake`. The name `brake`
 also covers the charged-shot control. Key bindings and the reverse-button
 option are runtime concerns; the simulation receives the same logical fields

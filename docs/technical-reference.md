@@ -12,9 +12,9 @@ implementation, diagnostics, and release verification.
 The initial desktop release targets Linux and Windows. Linux is checked locally
 with deterministic tests, a Vulkan display probe, and the complete replay
 library workflow.
-Windows has been checked locally with the V3 tests, a Vulkan probe, and a timed
-graphical scene before the replay-library changes; that update still needs a
-Windows run. The macOS audio bridge has a CI check, but the complete graphical
+Windows has passed the V3 simulation and runtime tests, a 600-tick headless run,
+and a Vulkan probe. Controller menu navigation and suspended-run resume have
+also been checked manually on Windows. The macOS audio bridge has a CI check, but the complete graphical
 game still needs a macOS run; official macOS support awaits hardware testing.
 The current module version is `0.23.0`; the changes
 in [CHANGELOG.md](../CHANGELOG.md) remain unreleased until final review.
@@ -26,6 +26,9 @@ redistributing it. After building on Linux, use
 `scripts/package_linux.sh` to make a local archive with a launcher that sets
 the working directory. The executable still requires the system GLFW and
 Vulkan libraries and a Vulkan-capable driver.
+On Windows, run `python scripts/package_windows.py OUTPUT.zip torus_trooper.exe`
+after building. CI produces both candidate archives after their platform checks
+pass; they remain private build artifacts until a release is published.
 
 ## Learn from the project
 
@@ -291,6 +294,10 @@ Controls:
   the HELP page. SETTINGS contains persistent volume, Vulkan MSAA, near-camera
   blur, near-camera fade, and rear-track blending controls.
 - Primary fire or the restart/start binding starts the selected run
+- Gamepad Start opens the menu during a run. B goes back one menu level.
+  B or Start from the start menu resumes a suspended run; Escape exits from
+  that menu. With no suspended run, Start activates the selected menu item.
+  B retains its charge-shot binding during gameplay.
 - After completing a run, the charge-shot control replays its recorded logical inputs
 - During replay, Left selects the cinematic camera and Right selects ship-follow
 - During replay, Up shows the gameplay HUD and Down hides it
@@ -335,7 +342,7 @@ or escaped bullet becomes its paired wireframe model, shrinks for
 - F11: toggle borderless fullscreen
 - F: show or hide the measured presentation FPS in the HUD
 - Enter or R: return to title selection after game over
-- Escape: return an active game/replay to title; exit from the title screen
+- Escape: open the menu during a run; exit from the start menu.
 
 Numeric-keypad directions and first-controller mappings are defaults; all of
 them can be replaced with the binding strings above.

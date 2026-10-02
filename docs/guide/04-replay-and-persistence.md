@@ -39,7 +39,7 @@ sequenceDiagram
     end
 ```
 
-In [`App.run`](../../runtime/app.v#L1154), the live path appends the encoded input to
+In [`App.run`](../../runtime/app.v#L1206), the live path appends the encoded input to
 `recorded_inputs` before calling `update_with_input`. It copies the completed
 log into player data when the run ends. The replay path indexes the stored byte by
 `simulation.tick`. At the end of recorded input it enters the game-over tail;
@@ -53,7 +53,7 @@ checksums.
 The replay camera in [`replay_camera.v`](../../sim/replay_camera.v#L27) uses its own
 seeded state to choose cinematic views. The title can also show a ship-follow
 view. These choices change presentation, not the recorded gameplay inputs.
-Attract replay runs silently because [`App.run`](../../runtime/app.v#L1172) decides
+Attract replay runs silently because [`App.run`](../../runtime/app.v#L1224) decides
 when audio should play. Neither camera controls nor audio-device state need to
 be written into each tick's input byte.
 
@@ -65,8 +65,10 @@ title playback. Each recording adds a name, timestamp, and score. `load_player_d
 file cannot be read or decoded; `normalize` clamps settings, ensures array
 sizes, migrates older values, and rejects invalid library entries. The
 version field supports changes in the save format. `record_result` copies the
-replay and updates scores when a run ends or returns to the menu; `App.run`
-saves the result once. Portable `.ttr` files have a separate format version and
+replay and updates scores when a run ends. Opening the menu suspends the live
+simulation and input log; resuming restores them without advancing the timer.
+Starting a replacement run or quitting commits the suspended recording once.
+Portable `.ttr` files have a separate format version and
 validate bounded tick inputs before importing. Import never changes high scores
 or unlocked levels. The library sorts indices rather than changing storage
 order, so renaming or sorting keeps a recording attached to its input log.

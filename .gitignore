@@ -1,0 +1,34 @@
+# Binaries for programs and plugins
+main
+torus_trooper
+*.exe
+*.exe~
+*.so
+*.dylib
+*.dll
+*.o
+*.a
+.goutputstream-*
+sim/*_test
+runtime/*_test
+vls.log
+config.json
+config.bin
+.editorconfig
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+# Python packaging-tool caches
+__pycache__/
+*.py[cod]

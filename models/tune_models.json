@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "player": {
+    "enabled": false,
+    "parts": [
+      {
+        "kind": "tapered_hull", "color": 7,
+        "sections": [
+          {"z": -1.35, "half_width": 0.20, "half_height": 0.10},
+          {"z": -0.45, "half_width": 0.34, "half_height": 0.15},
+          {"z": 0.35, "half_width": 0.28, "half_height": 0.12},
+          {"z": 1.75, "half_width": 0.035, "half_height": 0.025}
+        ]
+      },
+      {"kind": "wing_pair", "color": 7, "root_width": 0.26, "span": 1.35, "front_z": 0.55, "tip_z": -0.05, "rear_z": -1.05, "thickness": 0.035}
+    ]
+  },
+  "enemy_small": {
+    "enabled": false,
+    "parts": [
+      {
+        "kind": "round_hull", "color": 4,
+        "sections": [
+          {"z": -0.92, "half_width": 0.14, "half_height": 0.10},
+          {"z": -0.50, "half_width": 0.29, "half_height": 0.18},
+          {"z": 0.05, "half_width": 0.34, "half_height": 0.21},
+          {"z": 0.62, "half_width": 0.24, "half_height": 0.16},
+          {"z": 1.16, "half_width": 0.035, "half_height": 0.03}
+        ]
+      },
+      {"kind": "wing_pair", "color": 4, "root_width": 0.24, "span": 0.70, "front_z": 0.30, "tip_z": 0.02, "rear_z": -0.55, "thickness": 0.045}
+    ]
+  },
+  "enemy_middle": {
+    "enabled": false,
+    "parts": [
+      {
+        "kind": "tapered_hull", "color": 5,
+        "sections": [
+          {"z": -1.40, "half_width": 0.30, "half_height": 0.14},
+          {"z": -0.40, "half_width": 0.50, "half_height": 0.22},
+          {"z": 0.45, "half_width": 0.38, "half_height": 0.17},
+          {"z": 1.95, "half_width": 0.05, "half_height": 0.035}
+        ]
+      },
+      {"kind": "wing_pair", "color": 5, "root_width": 0.38, "span": 1.50, "front_z": 0.72, "tip_z": 0.02, "rear_z": -1.15, "thickness": 0.05}
+    ]
+  },
+  "enemy_boss": {
+    "enabled": false,
+    "parts": [
+      {
+        "kind": "tapered_hull", "color": 6,
+        "sections": [
+          {"z": -1.80, "half_width": 0.50, "half_height": 0.25},
+          {"z": -0.55, "half_width": 0.86, "half_height": 0.40},
+          {"z": 0.55, "half_width": 0.62, "half_height": 0.30},
+          {"z": 3.15, "half_width": 0.035, "half_height": 0.025}
+        ]
+      },
+      {"kind": "wing_pair", "color": 6, "root_width": 0.62, "span": 2.85, "front_z": 1.35, "tip_z": 0.45, "rear_z": -1.65, "thickness": 0.07},
+      {"kind": "spike_pair", "color": 6, "angle": 0.84823}
+    ]
+  }
+}

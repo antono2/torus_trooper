@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+  <title id="title">Annotated course view</title>
+  <desc id="desc">A perspective sketch of the open tunnel showing playable borders, repeated course slices, enemies and the player ship.</desc>
+  <defs>
+    <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#a5d4d0"/><stop offset="1" stop-color="#dcf2e7"/></linearGradient>
+    <linearGradient id="depth" x2="0" y2="1"><stop stop-color="#1b2537"/><stop offset="1" stop-color="#24364b"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#f6f4ea"/></marker>
+  </defs>
+  <rect width="1200" height="660" fill="#111b2c"/>
+  <text x="44" y="57" fill="#e9f5f2" font-family="sans-serif" font-weight="700" font-size="28">Course profile: one slice, three uses</text>
+  <text x="44" y="86" fill="#b7c9d2" font-family="sans-serif" font-size="17">Perspective schematic — diagnostic colors match the optional in-game overlay</text>
+  <rect x="38" y="112" width="800" height="505" rx="18" fill="url(#depth)" stroke="#40566b" stroke-width="2"/>
+  <path d="M68 171 C86 432 253 581 438 581 C623 581 790 432 808 171 L683 222 C669 375 572 478 438 478 C304 478 207 375 193 222Z" fill="url(#panel)"/>
+  <path d="M68 171 C86 432 253 581 438 581 C623 581 790 432 808 171 M193 222 C207 375 304 478 438 478 C572 478 669 375 683 222" fill="none" stroke="#1d3042" stroke-width="6"/>
+  <g fill="none" stroke="#264154" stroke-width="3">
+    <path d="M75 243 C113 459 264 558 438 558 C612 558 763 459 801 243"/>
+    <path d="M99 309 C147 451 285 536 438 536 C591 536 729 451 777 309"/>
+    <path d="M125 354 C191 457 302 515 438 515 C574 515 685 457 751 354"/>
+    <path d="M154 383 C229 458 320 497 438 497 C556 497 647 458 722 383"/>
+    <path d="M68 171 C120 381 255 513 367 573 M193 222 C237 369 323 449 385 473"/>
+    <path d="M808 171 C756 381 621 513 509 573 M683 222 C639 369 553 449 491 473"/>
+    <path d="M438 478 L438 581"/>
+  </g>
+  <g fill="none" stroke="#55e4d4" stroke-width="7" stroke-linecap="round">
+    <path d="M68 171 C86 432 253 581 438 581"/>
+    <path d="M808 171 C790 432 623 581 438 581"/>
+  </g>
+  <g fill="none" stroke="#ffd683" stroke-width="5" stroke-linecap="round">
+    <path d="M99 309 C147 451 285 536 438 536 C591 536 729 451 777 309"/>
+    <path d="M154 383 C229 458 320 497 438 497 C556 497 647 458 722 383"/>
+  </g>
+  <g fill="#ffea88" stroke="#533e20" stroke-width="3">
+    <path d="M313 456 L324 437 L335 456 L324 464Z"/>
+    <path d="M554 458 L565 439 L576 458 L565 466Z"/>
+    <path d="M434 487 L444 471 L454 487 L444 493Z"/>
+  </g>
+  <path d="M408 552 L438 520 L468 552 L446 543 L438 554 L430 543Z" fill="#fff" stroke="#76c9da" stroke-width="3"/>
+  <g font-family="sans-serif" fill="#ecf2f0">
+    <text x="866" y="151" font-size="21" font-weight="700">Shared course data</text>
+    <text x="886" y="213" font-size="19">Playable boundary</text>
+    <text x="886" y="239" font-size="15" fill="#a9bdc8">Cyan edges bound the walkable arc.</text>
+    <text x="886" y="318" font-size="19">Tunnel slices</text>
+    <text x="886" y="344" font-size="15" fill="#a9bdc8">Amber cross-sections mark depth.</text>
+    <text x="886" y="423" font-size="19">Enemy positions</text>
+    <text x="886" y="449" font-size="15" fill="#a9bdc8">Yellow markers occupy playable angles.</text>
+    <text x="886" y="528" font-size="19">Player position</text>
+    <text x="886" y="554" font-size="15" fill="#a9bdc8">Its limits use the same slice profile.</text>
+  </g>
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <path d="M867 213 L792 213" stroke="#55e4d4" marker-end="url(#arrow)"/>
+    <path d="M867 318 L732 318" stroke="#ffd683" marker-end="url(#arrow)"/>
+    <path d="M867 423 L576 451" stroke="#ffea88" marker-end="url(#arrow)"/>
+    <path d="M867 528 L469 538" stroke="#fff" marker-end="url(#arrow)"/>
+  </g>
+  <text x="46" y="642" fill="#9fb4c1" font-family="sans-serif" font-size="14">Illustrative perspective, not a screenshot. Exact curvature and placement vary with the generated seed.</text>
+</svg>

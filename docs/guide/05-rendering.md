@@ -50,7 +50,7 @@ The proxy is deliberately not the rendered outline. Both are derived from the
 seeded ship definition, so an imported replacement would need equivalent
 collision and attachment data. In play, `--debug-view=collisions,exhaust`
 shows these proxies over the scene without changing the simulation.
-[`App.run`](../../runtime/app.v#L1230) chooses the visible view and passes the
+[`App.run`](../../runtime/app.v#L1282) chooses the visible view and passes the
 resulting arrays to `tt_platform_set_bullets`, `tt_platform_set_tunnel`,
 `tt_platform_set_tunnel_fill`, and `tt_platform_set_ship_mesh`. The historical
 `set_bullets` name now accepts the general instance stream, not just bullets.

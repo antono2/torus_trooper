@@ -3719,6 +3719,26 @@ static bool tt_binding_pressed(TTPlatform *platform, int key) {
 	return !typed_letter && glfwGetKey(platform->window, key) == GLFW_PRESS;
 }
 
+static bool tt_platform_controller_back_pressed(TTPlatform *platform) {
+    if (!platform) return false;
+    int key = glfwJoystickIsGamepad(GLFW_JOYSTICK_1)
+        ? TT_GAMEPAD_BUTTON_BASE - GLFW_GAMEPAD_BUTTON_B
+        : TT_JOYSTICK_BUTTON_BASE - 1;
+    return tt_binding_pressed(platform, key);
+}
+
+static bool tt_platform_keyboard_escape_pressed(TTPlatform *platform) {
+    return platform && tt_binding_pressed(platform, GLFW_KEY_ESCAPE);
+}
+
+static bool tt_platform_controller_start_pressed(TTPlatform *platform) {
+    if (!platform) return false;
+    int key = glfwJoystickIsGamepad(GLFW_JOYSTICK_1)
+        ? TT_GAMEPAD_BUTTON_BASE - GLFW_GAMEPAD_BUTTON_START
+        : TT_JOYSTICK_BUTTON_BASE - 7;
+    return tt_binding_pressed(platform, key);
+}
+
 static bool tt_action_pressed(TTPlatform *platform, int action) {
     for (int index = 0; index < platform->action_key_counts[action]; ++index) {
 		if (tt_binding_pressed(platform, platform->action_keys[action][index])) return true;
@@ -3746,13 +3766,17 @@ static uint32_t tt_platform_input(TTPlatform *platform) {
     for (int key = GLFW_KEY_A; key <= GLFW_KEY_Z; ++key)
         if (glfwGetKey(platform->window, key) != GLFW_PRESS)
             platform->typed_letter_mask &= ~(1u << (key - GLFW_KEY_A));
-    if (platform->replay_library_open && !platform->replay_text_edit) {
+    if (platform->replay_library_open) {
         const int actions[7] = {TT_ACTION_UP, TT_ACTION_DOWN, TT_ACTION_LEFT,
             TT_ACTION_RIGHT, TT_ACTION_FIRE, TT_ACTION_CHARGE, TT_ACTION_BACK};
         const int events[7] = {-GLFW_KEY_UP, -GLFW_KEY_DOWN, -GLFW_KEY_LEFT,
             -GLFW_KEY_RIGHT, -GLFW_KEY_ENTER, -GLFW_KEY_ESCAPE, -GLFW_KEY_ESCAPE};
         uint32_t held = 0;
+        bool controller_back = tt_platform_controller_back_pressed(platform);
+        if (controller_back) held |= 1u << 6;
         for (int action = 0; action < 7; ++action) {
+            if ((platform->replay_text_edit && action != 6) ||
+                (controller_back && action == 5)) continue;
             for (int binding = 0; binding < platform->action_key_counts[actions[action]]; ++binding) {
                 int key = platform->action_keys[actions[action]][binding];
                 if (key < 0 && tt_binding_pressed(platform, key)) held |= 1u << action;

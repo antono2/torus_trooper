@@ -291,7 +291,10 @@ Controls:
   the HELP page. SETTINGS contains persistent volume, Vulkan MSAA, near-camera
   blur, near-camera fade, and rear-track blending controls.
 - Primary fire or the restart/start binding starts the selected run
-- Gamepad Start returns to the menu during a run and exits from the title screen
+- Gamepad Start opens the menu during a run. B goes back one menu level.
+  B or Start from the start menu resumes a suspended run; Escape exits from
+  that menu. With no suspended run, Start activates the selected menu item.
+  B retains its charge-shot binding during gameplay.
 - After completing a run, the charge-shot control replays its recorded logical inputs
 - During replay, Left selects the cinematic camera and Right selects ship-follow
 - During replay, Up shows the gameplay HUD and Down hides it
@@ -336,7 +339,7 @@ or escaped bullet becomes its paired wireframe model, shrinks for
 - F11: toggle borderless fullscreen
 - F: show or hide the measured presentation FPS in the HUD
 - Enter or R: return to title selection after game over
-- Escape: return an active game/replay to title; exit from the title screen
+- Escape: open the menu during a run; exit from the start menu.
 
 Numeric-keypad directions and first-controller mappings are defaults; all of
 them can be replaced with the binding strings above.

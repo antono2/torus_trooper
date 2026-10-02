@@ -47,7 +47,23 @@ for attempt in {1..40}; do
 done
 xdotool keyup --window "$window" Return
 grep -Fq 'Run started:' "$test_dir/game.log"
-sleep 2
+# Software Vulkan can take several seconds per frame. Wait for the gameplay
+# timer to advance before suspending; a fixed sleep can record zero inputs.
+for attempt in {1..120}; do
+    if xdotool getwindowname "$window" | grep -Eq 'TIME (1:|0:)'; then break; fi
+    sleep 0.25
+done
+xdotool getwindowname "$window" | grep -Eq 'TIME (1:|0:)'
+press Escape
+# Starting another run commits the suspended recording to the library.
+xdotool keydown --window "$window" Return
+for attempt in {1..120}; do
+    if [[ $(grep -Fc 'Run started:' "$test_dir/game.log") -ge 2 ]]; then break; fi
+    sleep 0.25
+done
+xdotool keyup --window "$window" Return
+sleep 0.5
+test "$(grep -Fc 'Run started:' "$test_dir/game.log")" -ge 2
 press Escape
 for step in {1..4}; do press Down; done
 screenshot title-screen

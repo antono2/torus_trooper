@@ -67,7 +67,10 @@ are saved automatically.
 
 Gamepads and joysticks are also supported. On a standard gamepad, use the left
 stick or D-pad to move, **A** to fire, and hold **B** to charge. Press **Start**
-to return to the menu, or exit from the title screen. All controls can
+to open the menu. **B** goes back one menu level; at the start menu,
+**B** or **Start** resumes a suspended run. **Escape** exits from the start
+menu. With no suspended run, Start starts the selected run or opens the selected menu.
+B still charges during gameplay. All controls can
 be [customized](docs/technical-reference.md#advanced-settings-and-controls).
 
 ## Make it comfortable
@@ -91,8 +94,10 @@ visible while hiding the panels and grid.
 
 ## Watch and share replays
 
-Choose **REPLAYS** on the title screen. Runs are saved when they finish or when
-you return to the menu. Your previous saved replay is kept too.
+Choose **REPLAYS** on the title screen. Runs are saved when they finish, when
+you replace a suspended run with a new one, or when you quit with a suspended
+run. Opening the menu suspends the active run so you can resume it.
+Your previous saved replay is kept too.
 
 - **Up / Down:** choose a recording by its date, score, difficulty, and duration.
 - **S** or **Left / Right:** sort by newest recording or highest score.

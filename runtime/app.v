@@ -163,6 +163,9 @@ fn C.tt_platform_set_title_status(platform &C.TTPlatform, grade int, level int, 
 fn C.tt_platform_set_title_grade_info(platform &C.TTPlatform, grade int, level int, max_level int, high_score int, high_score_start_level int, high_score_end_level int)
 
 fn C.tt_platform_input(platform &C.TTPlatform) u32
+fn C.tt_platform_controller_back_pressed(platform &C.TTPlatform) bool
+fn C.tt_platform_controller_start_pressed(platform &C.TTPlatform) bool
+fn C.tt_platform_keyboard_escape_pressed(platform &C.TTPlatform) bool
 
 fn C.tt_platform_set_paused(platform &C.TTPlatform, paused bool)
 
@@ -524,6 +527,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	mut replay_camera_toggle_pressed := false
 	mut replay_change_frames := 0
 	mut recorded_inputs := []u8{}
+	mut suspended_run := SuspendedRun{}
 	mut last_replay := if player_data.replay.valid {
 		player_data.latest_replay()
 	} else {
@@ -596,6 +600,10 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	}
 	for !C.tt_platform_should_close(app.platform) {
 		mut input_mask := C.tt_platform_input(app.platform)
+		input_mask = controller_menu_input_mask(input_mask, title_mode,
+			app.title_settings_open || title_menu_item == .help || replay_library.open || replay_mode,
+			suspended_run.valid, C.tt_platform_controller_back_pressed(app.platform),
+			C.tt_platform_controller_start_pressed(app.platform))
 		if replay_controls_blocked {
 			if input_mask & 511 == 0 {
 				replay_controls_blocked = false
@@ -864,12 +872,15 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			} else if !app.title_settings_open && !replay_mode
 				&& title_menu_item !in [.settings, .help, .tune, .replays, .exit] && start_down && !action_pressed {
 				title_volume_preview.cancel()
+				app.finish_suspended_run(suspended_run, mut player_data)
+				suspended_run = SuspendedRun{}
 				player_data.record_start(app.grade, app.starting_level)
 				app.save_player_data_if_enabled(player_data)
 				simulation_config = with_compute_backend(gameplay_config_with_seed(app.grade, app.starting_level, next_game_seed(mut run_seed_source)), app.compute_backend)
 				simulation = app.new_simulation(simulation_config)
 				title_mode = false
 				transition_frames = 30
+				replay_controls_blocked = C.tt_platform_controller_start_pressed(app.platform)
 				replay_mode = false
 				attract_replay = false
 				replay_change_frames = 0
@@ -956,6 +967,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		restart_down := input_mask & 128 != 0
 		escape_down := input_mask & 256 != 0
 		escape_edge := escape_down && !escape_pressed
+		mut resumed_run := false
 		if calibration_mode && escape_edge {
 			calibration_mode = false
 			title_mode = true
@@ -970,6 +982,11 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			if app.title_settings_open {
 				app.title_settings_open = false
 				app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
+				println('Settings closed.')
+			} else if title_menu_item == .help {
+				title_menu_item = title_menu_item_for_grade(app.grade)
+				app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
+				println('Help closed.')
 			} else if replay_mode {
 				title_menu_item = title_menu_item_for_grade(app.grade)
 				view := toggled_title_replay(replay_mode, last_replay.inputs.len > 0)
@@ -983,15 +1000,50 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 					replay_controls_blocked = true
 					replay_from_library = false
 				}
+			} else if suspended_run.valid && !C.tt_platform_keyboard_escape_pressed(app.platform) {
+				title_volume_preview.cancel()
+				simulation = sim.Simulation{ ...suspended_run.simulation }
+				simulation_config = simulation.config
+				recorded_inputs = suspended_run.inputs.clone()
+				app.grade = suspended_run.grade
+				app.starting_level = suspended_run.starting_level
+				paused = suspended_run.paused
+				music_sequence = suspended_run.music
+				previous_music_track = music_sequence.track
+				suspended_run = SuspendedRun{}
+				title_mode = false
+				replay_mode = false
+				attract_replay = false
+				result_recorded = false
+				accumulator = 0
+				transition_frames = 30
+				replay_controls_blocked = true
+				input_mask = 0
+				C.tt_platform_set_paused(app.platform, paused)
+				C.tt_platform_set_hud_visible(app.platform, true)
+				app.set_gameplay_status(simulation, paused)
+				if !isnil(app.audio) {
+					app.audio.play_music(music_sequence.track)
+					app.audio.set_paused(paused)
+				}
+				C.tt_platform_reset_frame_timing(app.platform)
+				previous = time.ticks()
+				resumed_run = true
+				println('Run resumed: ticks=${simulation.tick} score=${simulation.score} checksum=${simulation.checksum():016x}')
 			} else {
 				C.tt_platform_request_close(app.platform)
 			}
 		}
 		returning_from_game_over := should_return_to_title(title_mode, simulation.game_over, restart_down, restart_pressed, game_over_frames)
-		if returning_from_game_over || (!title_mode && !calibration_mode && escape_edge) {
+		if returning_from_game_over || (!title_mode && !calibration_mode && escape_edge && !resumed_run) {
 			title_volume_preview.cancel()
+			suspending_run := !simulation.game_over
+			if suspending_run {
+				suspended_run = suspend_run(&simulation, recorded_inputs, app.grade, app.starting_level, paused, music_sequence)
+				println('Run suspended: ticks=${simulation.tick} score=${simulation.score} checksum=${simulation.checksum():016x}')
+			}
 			last_replay = replay_for_title_return(last_replay, app.grade, app.starting_level, &simulation, recorded_inputs)
-			if !result_recorded && recorded_inputs.len > 0 {
+			if !suspending_run && !result_recorded && recorded_inputs.len > 0 {
 				player_data.record_result(app.grade, app.starting_level, int(simulation.level), simulation.score, last_replay)
 				app.save_player_data_if_enabled(player_data)
 			}
@@ -1406,6 +1458,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			break
 		}
 	}
+	app.finish_suspended_run(suspended_run, mut player_data)
 	println('simulation ticks=${simulation.tick} bullets=${simulation.living_bullets()} enemies=${simulation.living_enemies()} score=${simulation.score} checksum=${simulation.checksum():016x}')
 }
 

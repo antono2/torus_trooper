@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bundle GLFW, the Vulkan loader and X11 support libraries in Linux downloads,
+  with a launcher and their distribution license notices.
 - Open replay recordings in the original player view with the gameplay HUD,
   keeping the title-screen attract replay cinematic.
 - Support controller Start/B menu navigation and resume suspended runs without

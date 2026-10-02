@@ -26,9 +26,15 @@ cp "$binary" "$package/torus_trooper"
 cp -a "$repo_dir/shaders" "$repo_dir/sounds" "$repo_dir/models" "$repo_dir/docs" "$package/"
 cp "$repo_dir/LICENSE" "$repo_dir/README.md" "$repo_dir/CHANGELOG.md" "$package/"
 cp "$repo_dir/thirdparty/miniaudio/LICENSE" "$package/thirdparty/miniaudio/"
+python3 "$repo_dir/scripts/bundle_linux_runtime.py" "$package" "$binary"
+# Resolve the bundled libraries even when the executable is launched directly.
+patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$package/torus_trooper"
 cat > "$package/play.sh" <<'LAUNCHER'
 #!/bin/sh
-cd -- "$(dirname -- "$0")" || exit 1
+package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+cd -- "$package_dir" || exit 1
+LD_LIBRARY_PATH="$package_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
 exec ./torus_trooper "$@"
 LAUNCHER
 chmod +x "$package/play.sh" "$package/torus_trooper"

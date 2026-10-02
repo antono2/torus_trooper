@@ -109,7 +109,7 @@ jobs:
           env -u GITHUB_JOB make -C toolchain/v local=1
           echo "$GITHUB_WORKSPACE/toolchain/v" >> "$GITHUB_PATH"
       - name: Install native runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool x11-utils bubblewrap patchelf libxxf86vm1 libx11-xcb1 ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools
       - name: Compile and validate shaders
         run: |
           for source in shaders/*.vert shaders/*.frag; do
@@ -145,6 +145,8 @@ jobs:
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate
         run: bash scripts/package_linux.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
+      - name: Probe Linux package without host runtime libraries
+        run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
       - uses: actions/upload-artifact@v7
         with:
           name: torus-trooper-linux-x86_64

@@ -22,7 +22,9 @@ Once you have a package:
 3. Choose **Normal** with the arrow keys and press **Space** to start.
 
 Keep the extracted files together. You need a graphics driver with Vulkan support;
-the Linux package also needs GLFW 3 and the Vulkan loader installed.
+the Linux package includes GLFW and the Vulkan loader. Use `play.sh` to load the
+bundled libraries. The Linux download requires glibc 2.38 or newer, as provided
+by Ubuntu 24.04 and newer distributions.
 If you want to compile the game yourself, see the [build instructions](docs/technical-reference.md#desktop-build-requirements).
 
 ## Gameplay preview
@@ -125,3 +127,5 @@ The charge button on a difficulty selection still opens the latest replay.
 The game code is available under the [MIT License](LICENSE).
 Bundled music and sounds retain [Kenta Cho’s license](sounds/LICENSE.txt),
 and the audio library retains [its own license](thirdparty/miniaudio/LICENSE).
+The Linux archive includes runtime-library license notices under
+`thirdparty/linux-runtime/`.

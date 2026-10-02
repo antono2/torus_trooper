@@ -3,12 +3,17 @@
 set -euo pipefail
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 binary=$(realpath -- "${1:-$project_dir/torus_trooper}")
-for dependency in xdotool python3; do command -v "$dependency" >/dev/null; done
+for dependency in xdotool xprop stdbuf python3; do command -v "$dependency" >/dev/null; done
 test_dir=$(mktemp -d)
 game_pid=''
+frame_pid=''
 cleanup() {
     status=$?
     if [[ "$status" != 0 && -f "$test_dir/game.log" ]]; then cat "$test_dir/game.log" >&2; fi
+    if [[ -n "$frame_pid" ]]; then
+        kill -TERM "$frame_pid" 2>/dev/null || true
+        wait "$frame_pid" 2>/dev/null || true
+    fi
     if [[ -n "$game_pid" ]]; then
         kill -TERM "$game_pid" 2>/dev/null || true
         wait "$game_pid" 2>/dev/null || true
@@ -32,20 +37,38 @@ grep -Fq 'Renderer bootstrap complete' "$test_dir/game.log"
 window=$(xdotool search --onlyvisible --name '^Torus Trooper' | head -1)
 # Use XTest keyboard input so modifier state matches real keyboard events.
 xdotool windowfocus --sync "$window"
+# The runtime writes the window title each menu/playback frame. Property events
+# acknowledge processed frames even when the text itself has not changed.
+stdbuf -oL xprop -spy -id "$window" _NET_WM_NAME > "$test_dir/frames.log" &
+frame_pid=$!
+wait_frames() {
+    local target=$1
+    for attempt in {1..120}; do
+        kill -0 "$game_pid" 2>/dev/null || return 1
+        if [[ $(wc -l < "$test_dir/frames.log") -ge "$target" ]]; then return; fi
+        sleep 0.25
+    done
+    printf 'Timed out waiting for rendered input frames\n' >&2
+    return 1
+}
+wait_frames 1
 press() {
+    local before
+    before=$(wc -l < "$test_dir/frames.log")
     case "$1" in
         ctrl+*|r|e|i|p|s|y|Delete)
             # Library commands are queued callbacks. Holding a letter could
             # repeat it into the text field that the command just opened.
             xdotool key --clearmodifiers "$1"
-            sleep 1
+            wait_frames "$((before + 2))"
             return
             ;;
     esac
     xdotool keydown "$1"
-    sleep 1
+    wait_frames "$((before + 2))"
+    before=$(wc -l < "$test_dir/frames.log")
     xdotool keyup "$1"
-    sleep 1
+    wait_frames "$((before + 2))"
 }
 screenshot() {
     if [[ -n "${TT_REPLAY_SCREENSHOTS:-}" ]]; then

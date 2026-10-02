@@ -24,8 +24,14 @@ and `models/`, with those paths resolved from the working directory. Include
 `LICENSE`, `sounds/LICENSE.txt`, and `thirdparty/miniaudio/LICENSE` when
 redistributing it. After building on Linux, use
 `scripts/package_linux.sh` to make a local archive with a launcher that sets
-the working directory. The executable still requires the system GLFW and
-Vulkan libraries and a Vulkan-capable driver.
+the working directory and loads bundled GLFW, Vulkan loader, and X11 support
+libraries. Their distribution license notices and version manifest are included
+under `thirdparty/linux-runtime/`. System glibc (2.38 or newer) and the machine's
+Vulkan-capable graphics driver remain system dependencies. Launch through
+`play.sh`, which adds the package's `lib/` directory to the library search path.
+The packaged executable also has a relative library search path, so it finds
+the bundled libraries when launched directly. Packaging needs Python 3,
+`patchelf`, and the distribution's installed runtime-library license notices.
 On Windows, run `python scripts/package_windows.py OUTPUT.zip torus_trooper.exe`
 after building. CI produces both candidate archives after their platform checks
 pass; they remain private build artifacts until a release is published.

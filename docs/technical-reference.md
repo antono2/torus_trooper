@@ -291,6 +291,7 @@ Controls:
   the HELP page. SETTINGS contains persistent volume, Vulkan MSAA, near-camera
   blur, near-camera fade, and rear-track blending controls.
 - Primary fire or the restart/start binding starts the selected run
+- Gamepad Start returns to the menu during a run and exits from the title screen
 - After completing a run, the charge-shot control replays its recorded logical inputs
 - During replay, Left selects the cinematic camera and Right selects ship-follow
 - During replay, Up shows the gameplay HUD and Down hides it

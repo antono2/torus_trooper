@@ -145,7 +145,9 @@ fn test_all_input_actions_are_bindable_from_options_or_command_line() {
 	assert defaults.fire.contains('gamepad_a')
 	assert defaults.fire.contains('joystick_button_1')
 	assert defaults.charge.contains('left_shift')
-	assert defaults.back == 'escape'
+	assert defaults.back == 'escape,gamepad_start,joystick_button_8'
+	assert 'gamepad_start' !in defaults.fire.split(',')
+	assert 'joystick_button_8' !in defaults.fire.split(',')
 	assert defaults.volume_down == 'minus,kp_subtract'
 	assert defaults.volume_up == 'equal,kp_add'
 	assert defaults.fullscreen == 'f11'

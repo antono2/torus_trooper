@@ -66,7 +66,8 @@ its starting level or setting. Your high scores, unlocked levels, and settings
 are saved automatically.
 
 Gamepads and joysticks are also supported. On a standard gamepad, use the left
-stick or D-pad to move, **A** to fire, and hold **B** to charge. All controls can
+stick or D-pad to move, **A** to fire, and hold **B** to charge. Press **Start**
+to return to the menu, or exit from the title screen. All controls can
 be [customized](docs/technical-reference.md#advanced-settings-and-controls).
 
 ## Make it comfortable

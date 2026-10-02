@@ -12,9 +12,9 @@ implementation, diagnostics, and release verification.
 The initial desktop release targets Linux and Windows. Linux is checked locally
 with deterministic tests, a Vulkan display probe, and the complete replay
 library workflow.
-Windows has been checked locally with the V3 tests, a Vulkan probe, and a timed
-graphical scene before the replay-library changes; that update still needs a
-Windows run. The macOS audio bridge has a CI check, but the complete graphical
+Windows has passed the V3 simulation and runtime tests, a 600-tick headless run,
+and a Vulkan probe. Controller menu navigation and suspended-run resume have
+also been checked manually on Windows. The macOS audio bridge has a CI check, but the complete graphical
 game still needs a macOS run; official macOS support awaits hardware testing.
 The current module version is `0.23.0`; the changes
 in [CHANGELOG.md](../CHANGELOG.md) remain unreleased until final review.
@@ -26,6 +26,9 @@ redistributing it. After building on Linux, use
 `scripts/package_linux.sh` to make a local archive with a launcher that sets
 the working directory. The executable still requires the system GLFW and
 Vulkan libraries and a Vulkan-capable driver.
+On Windows, run `python scripts/package_windows.py OUTPUT.zip torus_trooper.exe`
+after building. CI produces both candidate archives after their platform checks
+pass; they remain private build artifacts until a release is published.
 
 ## Learn from the project
 

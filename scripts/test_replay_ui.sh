@@ -17,7 +17,10 @@ cleanup() {
 }
 trap cleanup EXIT
 cd -- "$project_dir"
-"$binary" --no-sound --volume 0 --res 1280 720 \
+# This checks replay interaction, while check.sh separately probes the default
+# renderer. Keep software Vulkan responsive enough to sample held UI keys.
+printf '%s\n' '{"version":14,"antialiasing_samples":1,"near_blur_percent":0,"track_draw_distance":16,"wire_draw_distance":16,"border_draw_distance":16}' > "$test_dir/player.json"
+"$binary" --no-sound --volume 0 --res 640 360 \
     --data-file "$test_dir/player.json" >"$test_dir/game.log" 2>&1 &
 game_pid=$!
 for attempt in {1..120}; do
@@ -27,11 +30,22 @@ for attempt in {1..120}; do
 done
 grep -Fq 'Renderer bootstrap complete' "$test_dir/game.log"
 window=$(xdotool search --onlyvisible --name '^Torus Trooper' | head -1)
+# Use XTest keyboard input so modifier state matches real keyboard events.
+xdotool windowfocus --sync "$window"
 press() {
-    xdotool keydown --window "$window" "$1"
-    sleep 0.30
-    xdotool keyup --window "$window" "$1"
-    sleep 0.50
+    case "$1" in
+        ctrl+*|r|e|i|p|s|y|Delete)
+            # Library commands are queued callbacks. Holding a letter could
+            # repeat it into the text field that the command just opened.
+            xdotool key --clearmodifiers "$1"
+            sleep 1
+            return
+            ;;
+    esac
+    xdotool keydown "$1"
+    sleep 1
+    xdotool keyup "$1"
+    sleep 1
 }
 screenshot() {
     if [[ -n "${TT_REPLAY_SCREENSHOTS:-}" ]]; then
@@ -40,12 +54,12 @@ screenshot() {
     fi
 }
 sleep 3
-xdotool keydown --window "$window" Return
+xdotool keydown Return
 for attempt in {1..40}; do
     if grep -Fq 'Run started:' "$test_dir/game.log"; then break; fi
     sleep 0.25
 done
-xdotool keyup --window "$window" Return
+xdotool keyup Return
 grep -Fq 'Run started:' "$test_dir/game.log"
 # Software Vulkan can take several seconds per frame. Wait for the gameplay
 # timer to advance before suspending; a fixed sleep can record zero inputs.
@@ -56,12 +70,12 @@ done
 xdotool getwindowname "$window" | grep -Eq 'TIME (1:|0:)'
 press Escape
 # Starting another run commits the suspended recording to the library.
-xdotool keydown --window "$window" Return
+xdotool keydown Return
 for attempt in {1..120}; do
     if [[ $(grep -Fc 'Run started:' "$test_dir/game.log") -ge 2 ]]; then break; fi
     sleep 0.25
 done
-xdotool keyup --window "$window" Return
+xdotool keyup Return
 sleep 0.5
 test "$(grep -Fc 'Run started:' "$test_dir/game.log")" -ge 2
 press Escape
@@ -71,7 +85,7 @@ press Return
 screenshot replay-library
 press r
 press ctrl+a
-xdotool type --window "$window" --delay 80 'First flight'
+xdotool type --delay 80 'First flight'
 press Return
 screenshot replay-library
 press e
@@ -93,7 +107,7 @@ press i
 screenshot file-browser
 press p
 press ctrl+a
-xdotool type --window "$window" --delay 30 "$replay"
+xdotool type --delay 30 "$replay"
 press Return
 screenshot imported-replay
 python3 - "$test_dir/player.json" <<'PY'

@@ -143,6 +143,13 @@ jobs:
         run: v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc . && ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
+      - name: Package Linux candidate
+        run: bash scripts/package_linux.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: torus-trooper-linux-x86_64
+          path: torus-trooper-0.23.0-linux-x86_64.tar.gz
+          if-no-files-found: error
 
   windows-v-tests:
     name: Windows V simulation and runtime tests
@@ -248,3 +255,25 @@ jobs:
           $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
           $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
           .\scripts\build_windows.ps1 -OutputPath $Executable -Verify
+      - name: Package and probe Windows candidate
+        shell: pwsh
+        run: |
+          $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
+          python scripts/package_windows.py torus-trooper-0.23.0-windows-x86_64.zip $Executable
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Extracted = Join-Path $env:RUNNER_TEMP 'torus-trooper-package'
+          Expand-Archive torus-trooper-0.23.0-windows-x86_64.zip $Extracted
+          $Package = Join-Path $Extracted 'torus-trooper'
+          $Probe = Start-Process -FilePath (Join-Path $Package 'torus_trooper.exe') `
+            -ArgumentList @('--probe', '--no-sound', '--volume', '0') `
+            -WorkingDirectory $Package -WindowStyle Hidden -PassThru
+          if (-not $Probe.WaitForExit(120000)) {
+            Stop-Process -Id $Probe.Id -Force
+            throw 'Packaged Windows Vulkan probe timed out'
+          }
+          if ($Probe.ExitCode -ne 0) { throw "Packaged Windows probe failed: $($Probe.ExitCode)" }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: torus-trooper-windows-x86_64
+          path: torus-trooper-0.23.0-windows-x86_64.zip
+          if-no-files-found: error

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Support controller Start/B menu navigation and resume suspended runs without
+  resetting simulation, input recording, pause state, or music selection.
+- Save suspended recordings when replaced or when quitting, keeping the replay
+  library free of duplicate recordings from repeated menu visits.
+- Produce Windows and Linux candidate archives in CI, including runtime assets
+  and license notices, and probe the extracted Windows package.
 - Add a replay library with recording time, score and duration, sorting, custom
   names, file import/export and removal. Preserve the previous saved replay.
 - Preserve shot range and god mode in new recordings for consistent playback.

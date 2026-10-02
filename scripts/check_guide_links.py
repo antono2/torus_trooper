@@ -62,7 +62,7 @@ def main() -> int:
                     if start > end or end > len(lines):
                         errors.append(f"{location}: line outside {target}")
                         continue
-                    key = f"{destination.relative_to(ROOT)}#{fragment}"
+                    key = f"{destination.relative_to(ROOT).as_posix()}#{fragment}"
                     actual[key] = "\n".join(lines[start - 1:end])
                 elif destination.suffix == ".md" and fragment not in headings(destination):
                     errors.append(f"{location}: missing heading {target}")
@@ -70,7 +70,7 @@ def main() -> int:
         if errors:
             print("\n".join(errors))
             return 1
-        FINGERPRINTS.write_text(json.dumps(dict(sorted(actual.items())), indent=2) + "\n", encoding="utf-8")
+        FINGERPRINTS.write_text(json.dumps(dict(sorted(actual.items())), indent=2) + "\n", encoding="utf-8", newline="\n")
         print(f"Recorded {len(actual)} source anchors")
         return 0
     for key, value in actual.items():

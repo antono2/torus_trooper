@@ -46,7 +46,7 @@ jobs:
 
   v-tests:
     name: V simulation and runtime tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       VMODULES: ${{ github.workspace }}/modules
       VULKAN_SDK: ${{ github.workspace }}/dependencies/Vulkan-Headers
@@ -147,6 +147,24 @@ jobs:
         run: bash scripts/package_linux.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
       - name: Probe Linux package without host runtime libraries
         run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
+      - name: Probe package on Ubuntu 26.04 without installing GLFW
+        run: |
+          xvfb-run -a bash -c '
+            docker run --rm --uts=host --ipc=host \
+              -e DISPLAY -e XAUTHORITY=/tmp/game-xauthority \
+              -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
+              -v "$XAUTHORITY:/tmp/game-xauthority:ro" \
+              -v "$PWD/torus-trooper-0.23.0-linux-x86_64.tar.gz:/candidate.tar.gz:ro" \
+              ubuntu:26.04 bash -ec "
+                apt-get update
+                apt-get install -y --no-install-recommends mesa-vulkan-drivers
+                if dpkg-query -W libglfw3 2>/dev/null; then exit 1; fi
+                tar -xzf /candidate.tar.gz -C /tmp
+                cd /tmp/torus-trooper
+                ./play.sh --headless --ticks 600 --no-sound --volume 0 | grep -F checksum=490efd84cf12692f
+                ./play.sh --probe --no-sound --volume 0
+              "
+          '
       - uses: actions/upload-artifact@v7
         with:
           name: torus-trooper-linux-x86_64

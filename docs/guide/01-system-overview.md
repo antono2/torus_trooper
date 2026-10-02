@@ -33,7 +33,7 @@ sequenceDiagram
 ```
 
 The loop uses a real-time accumulator in
-[`App.run`](../../runtime/app.v#L1177); it consumes one `1 / ticks_per_second` interval
+[`App.run`](../../runtime/app.v#L1181); it consumes one `1 / ticks_per_second` interval
 for each simulation update. The constant is 60 in
 [`ticks_per_second`](../../sim/simulation.v#L5). The runtime caps a single elapsed
 interval at 0.25 seconds so a long stall cannot request an unbounded catch-up
@@ -43,7 +43,7 @@ course between ticks. That fraction changes drawing, not gameplay decisions.
 ## Trace one action
 
 The platform bridge reports a bit mask from GLFW input. `input_state` in
-[`runtime/app.v`](../../runtime/app.v#L1928) converts it to `sim.InputState`, whose
+[`runtime/app.v`](../../runtime/app.v#L1936) converts it to `sim.InputState`, whose
 fields are `left`, `right`, `up`, `down`, `fire`, and `brake`. The name `brake`
 also covers the charged-shot control. Key bindings and the reverse-button
 option are runtime concerns; the simulation receives the same logical fields

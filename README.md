@@ -112,7 +112,8 @@ When editing a name or file path, **Ctrl+A** selects all and **Ctrl+V** pastes.
 Exports won't overwrite an existing file. Imported scores do not change your
 personal best.
 
-During playback, **Left / Right** switches between cinematic and ship-follow
+Recordings open in the original player view with the gameplay HUD shown.
+During playback, **Left / Right** switches between cinematic and player
 views; **Up / Down** shows or hides the HUD. **Escape** returns to the library.
 The charge button on a difficulty selection still opens the latest replay.
 

@@ -521,7 +521,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	mut title_mode := !test_effects && !test_object_tuning && !direct_tuning
 	mut calibration_mode := test_object_tuning || direct_tuning
 	mut replay_mode := false
-	mut replay_camera_enabled := true
+	mut replay_camera_enabled := false
 	mut replay_hud_visible := true
 	mut replay_camera := sim.new_replay_camera(u32(simulation.config.random_seed))
 	mut replay_camera_toggle_pressed := false
@@ -634,8 +634,10 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 					replay_mode = true
 					replay_from_library = true
 					attract_replay = true
+					replay_camera_enabled = false
+					replay_hud_visible = true
 					replay_change_frames = 0
-					C.tt_platform_set_hud_visible(app.platform, false)
+					C.tt_platform_set_hud_visible(app.platform, true)
 				}
 				if chosen != -1 {
 					replay_controls_blocked = true
@@ -906,6 +908,8 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				attract_replay = view.attract_replay
 				C.tt_platform_set_hud_visible(app.platform, false)
 				if replay_mode {
+					replay_camera_enabled = false
+					replay_hud_visible = true
 					println('Replay view shown.')
 				} else {
 					println('Replay view hidden; title selection shown.')
@@ -1250,7 +1254,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		presentation.ship.angle = simulation.presentation_ship_angle(presentation_fraction)
 		presentation.ship.bank = simulation.presentation_ship_bank(presentation_fraction)
 		calibration_parameters := calibration_camera.parameters()
-		cinematic_replay := (replay_mode || attract_replay) && replay_camera_enabled
+		cinematic_replay := replay_uses_cinematic_camera(replay_mode, attract_replay, replay_camera_enabled)
 		use_replay_camera_3d := calibration_mode || cinematic_replay
 		camera_angle := if calibration_mode {
 			calibration_parameters.eye_angle
@@ -1309,13 +1313,13 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		} else {
 			[]sim.CourseVertex{}
 		}
-		if world_visible && app.wire_draw_distance > 0 && (replay_mode || attract_replay) {
+		if world_visible && app.wire_draw_distance > 0 && cinematic_replay {
 			tunnel_vertices << presentation.render_course_backward_wire_without_markers(wire_ring_count, 32, course_camera_angle, course_start_distance, app.track_draw_distance, course_camera_distance, app.rear_track_blend_percent)
 		}
 		if world_visible && !calibration_mode && app.border_draw_distance > 0 {
 			tunnel_vertices << presentation.render_course_side_lights_to_distance(course_camera_angle,
 				course_start_distance, 1, 0, app.border_draw_distance)
-			if replay_mode || attract_replay {
+			if cinematic_replay {
 				tunnel_vertices << presentation.render_course_side_lights_to_distance(course_camera_angle,
 					course_start_distance, -1, 0, app.border_draw_distance)
 			}
@@ -1336,7 +1340,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		} else {
 			[]sim.CourseFillVertex{}
 		}
-		if world_visible && (replay_mode || attract_replay) {
+		if world_visible && cinematic_replay {
 			tunnel_fill_vertices << presentation.render_course_backward_fill_snapshot_from_with_rear_blend(panel_ring_count, 32, course_camera_angle, course_start_distance, course_camera_distance, app.rear_track_blend_percent, app.track_draw_distance)
 		}
 		if tunnel_fill_vertices.len > 0 {
@@ -1910,6 +1914,10 @@ fn should_return_to_title(title_mode bool, game_over bool, restart_down bool,
 
 fn should_refresh_gameplay_status(paused bool, game_over bool, tick int) bool {
 	return paused || game_over || tick % 10 == 0
+}
+
+fn replay_uses_cinematic_camera(replay_mode bool, attract_replay bool, cinematic_selected bool) bool {
+	return if replay_mode { cinematic_selected } else { attract_replay }
 }
 
 fn title_replay_uses_gameplay_status(title_mode bool, replay_mode bool,

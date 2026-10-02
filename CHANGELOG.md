@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Open replay recordings in the original player view with the gameplay HUD,
+  keeping the title-screen attract replay cinematic.
 - Support controller Start/B menu navigation and resume suspended runs without
   resetting simulation, input recording, pause state, or music selection.
 - Save suspended recordings when replaced or when quitting, keeping the replay

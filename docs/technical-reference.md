@@ -299,7 +299,9 @@ Controls:
   that menu. With no suspended run, Start activates the selected menu item.
   B retains its charge-shot binding during gameplay.
 - After completing a run, the charge-shot control replays its recorded logical inputs
-- During replay, Left selects the cinematic camera and Right selects ship-follow
+- Recordings open in the original player view with the gameplay HUD shown;
+  the automatic title-screen replay keeps its cinematic camera.
+- During replay, Left selects the cinematic camera and Right selects the player view
 - During replay, Up shows the gameplay HUD and Down hides it
 
 The cinematic replay camera uses a seeded FLOAT/FIX state machine,

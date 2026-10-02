@@ -463,6 +463,14 @@ fn test_title_attract_replay_advances_silently_behind_selection() {
 	assert !should_advance_simulation(true, false, true, true)
 }
 
+fn test_player_replay_view_does_not_change_the_title_attract_camera() {
+	assert !replay_uses_cinematic_camera(true, true, false)
+	assert !replay_uses_cinematic_camera(true, false, false)
+	assert replay_uses_cinematic_camera(false, true, false)
+	assert replay_uses_cinematic_camera(true, true, true)
+	assert !replay_uses_cinematic_camera(false, false, true)
+}
+
 fn test_title_without_replay_hides_the_game_world() {
 	assert !should_render_world(true, false, false, false)
 	assert should_render_world(true, true, false, false)

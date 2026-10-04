@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Keep menu/replay fades and game-over delays consistent across display frame
+  rates, including after a slow frame.
+- Clarify gameplay tuning and renderer values, separate runtime responsibilities,
+  and check project compiler diagnostics during verification.
+- Build release archives with freshly compiled and validated shaders.
+
 ## 0.23.0
 
 Initial release for Windows and Linux.

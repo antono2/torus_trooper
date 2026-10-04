@@ -302,8 +302,10 @@ distance. Exported recordings normally go in the adjacent `replays` directory.
 
 High scores and completed runs are saved when game over begins. Opening the menu
 suspends a live run for later resume; replacing that run or quitting saves its
-recording. Game-over return input unlocks after 60 presented frames, and inactivity
-returns to the title after 1,200 frames (one and twenty seconds at 60 FPS).
+recording. Game-over return input unlocks after one second, and inactivity returns to the
+title after twenty seconds. Menu/replay transitions last half a second; the
+game-over fade lasts two seconds. These durations use monotonic elapsed time
+and remain the same at different display frame rates.
 
 ### Replay files and playback
 

@@ -443,11 +443,11 @@ fn test_god_mode_phrase_is_case_insensitive_and_resets_after_a_mismatch() {
 }
 
 fn test_presentation_fade_covers_transitions_and_game_over() {
-	assert presentation_fade(30, 0) == 1
-	assert presentation_fade(15, 0) == 0.5
+	assert presentation_fade(500, 0) == 1
+	assert presentation_fade(250, 0) == 0.5
 	assert presentation_fade(0, 0) == 0
-	assert presentation_fade(0, 120) == 0.65
-	assert presentation_fade(30, 120) == 1
+	assert presentation_fade(0, 2000) == 0.65
+	assert presentation_fade(500, 2000) == 1
 }
 
 fn test_title_attract_replay_advances_silently_behind_selection() {
@@ -485,13 +485,14 @@ fn test_title_replay_view_toggles_without_restarting_playback() {
 	assert !missing.attract_replay
 }
 
-fn test_title_replay_transition_advances_and_retracts_over_30_frames() {
-	assert stepped_title_replay_transition(0, true) == 1
-	assert stepped_title_replay_transition(29, true) == 30
-	assert stepped_title_replay_transition(30, true) == 30
-	assert stepped_title_replay_transition(30, false) == 29
-	assert stepped_title_replay_transition(1, false) == 0
-	assert stepped_title_replay_transition(0, false) == 0
+fn test_title_replay_transition_advances_and_retracts_over_half_a_second() {
+	assert stepped_title_replay_transition(0, true, 250) == 250
+	assert stepped_title_replay_transition(490, true, 20) == 500
+	assert stepped_title_replay_transition(500, true, 20) == 500
+	assert stepped_title_replay_transition(500, false, 250) == 250
+	assert stepped_title_replay_transition(10, false, 20) == 0
+	assert stepped_title_replay_transition(0, false, 20) == 0
+	assert stepped_title_replay_transition(250, false, -20) == 250
 }
 
 fn test_title_replay_viewport_expands_from_four_fifths_to_full_width() {
@@ -532,8 +533,8 @@ fn test_dynamic_vertex_buffers_keep_each_in_flight_frame_separate() {
 
 fn test_title_replay_view_ratio_only_contracts_a_title_with_replay_data() {
 	assert title_replay_view_ratio(true, true, 0) == 0
-	assert title_replay_view_ratio(true, true, 15) == 0.5
-	assert title_replay_view_ratio(true, true, 30) == 1
+	assert title_replay_view_ratio(true, true, 250) == 0.5
+	assert title_replay_view_ratio(true, true, 500) == 1
 	assert title_replay_view_ratio(true, false, 0) == 1
 	assert title_replay_view_ratio(false, true, 0) == 1
 }
@@ -552,11 +553,11 @@ fn test_only_live_gameplay_emits_simulation_audio() {
 }
 
 fn test_game_over_return_has_input_delay_and_idle_timeout() {
-	assert !should_return_to_title(false, true, true, false, 60)
-	assert should_return_to_title(false, true, true, false, 61)
-	assert !should_return_to_title(false, true, true, true, 61)
-	assert should_return_to_title(false, true, false, false, 1201)
-	assert !should_return_to_title(true, true, true, false, 1201)
+	assert !should_return_to_title(false, true, true, false, 999)
+	assert should_return_to_title(false, true, true, false, 1000)
+	assert !should_return_to_title(false, true, true, true, 1000)
+	assert should_return_to_title(false, true, false, false, 20_000)
+	assert !should_return_to_title(true, true, true, false, 20_000)
 }
 
 fn test_title_replay_end_waits_through_expected_game_over_tail() {
@@ -574,10 +575,10 @@ fn test_gameplay_status_refreshes_immediately_for_pause_and_game_over() {
 }
 
 fn test_full_title_replay_switches_to_gameplay_status_atomically() {
-	assert !title_replay_uses_gameplay_status(true, true, 29)
-	assert title_replay_uses_gameplay_status(true, true, 30)
-	assert !title_replay_uses_gameplay_status(true, false, 30)
-	assert !title_replay_uses_gameplay_status(false, true, 30)
+	assert !title_replay_uses_gameplay_status(true, true, 499)
+	assert title_replay_uses_gameplay_status(true, true, 500)
+	assert !title_replay_uses_gameplay_status(true, false, 500)
+	assert !title_replay_uses_gameplay_status(false, true, 500)
 }
 
 fn test_escape_input_bit_is_separate_from_restart_and_gameplay_input() {
@@ -604,4 +605,46 @@ fn test_hull_material_key_is_stable_and_follows_simulation_not_hud_or_palette() 
 	assert key != ship_material_key(12346, 1, 1)
 	assert key != ship_material_key(12345, 2, 1)
 	assert key != ship_material_key(12345, 1, 2)
+}
+
+fn test_presentation_durations_are_independent_of_frame_rate() {
+	for fps in [30, 60, 144] {
+		mut timers := PresentationTimers{}
+		mut previous_ms := i64(0)
+		for frame in 1 .. fps * 20 + 1 {
+			// Divide absolute elapsed time, so rounding does not accumulate drift.
+			now_ms := i64(frame) * 1000 / fps
+			timers.advance(now_ms - previous_ms, false, true, true, false)
+			previous_ms = now_ms
+			if frame == fps / 2 {
+				assert timers.transition_remaining_ms == 0
+				assert title_replay_view_ratio(true, true, timers.replay_change_ms) == 1
+			}
+			if frame == fps * 2 {
+				assert presentation_fade(timers.transition_remaining_ms, timers.game_over_elapsed_ms) == 0.65
+			}
+			assert should_return_to_title(false, true, true, false, timers.game_over_elapsed_ms) == (now_ms >= 1000)
+			assert should_return_to_title(false, true, false, false, timers.game_over_elapsed_ms) == (now_ms >= 20_000)
+		}
+	}
+}
+
+fn test_presentation_timers_clamp_stalls_and_preserve_replay_direction() {
+	mut timers := PresentationTimers{}
+	timers.advance(250, true, false, true, false)
+	assert presentation_fade(timers.transition_remaining_ms, 0) == 0.5
+	assert timers.replay_change_ms == 250
+	timers.advance(100, true, false, false, false)
+	assert timers.replay_change_ms == 150
+	timers.advance(100, true, false, false, true)
+	assert timers.replay_change_ms == 150 // TUNE owns its own camera.
+	timers.advance(-100, true, false, true, false)
+	assert timers.replay_change_ms == 150
+	timers.advance(30_000, false, true, true, false)
+	assert timers.transition_remaining_ms == 0
+	assert timers.replay_change_ms == 500
+	assert timers.game_over_elapsed_ms == 20_000
+	timers.advance(16, false, false, false, false)
+	assert timers.game_over_elapsed_ms == 0
+	assert timers.replay_change_ms == 484
 }

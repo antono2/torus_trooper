@@ -33,7 +33,7 @@ sequenceDiagram
 ```
 
 The loop uses a real-time accumulator in
-[`App.run`](../../runtime/app.v#L1087); it consumes one `1 / ticks_per_second` interval
+[`App.run`](../../runtime/app.v#L1096); it consumes one `1 / ticks_per_second` interval
 for each simulation update. The constant is 60 in
 [`ticks_per_second`](../../sim/gameplay_tuning.v#L6). The runtime caps a single elapsed
 interval at 0.25 seconds so a long stall cannot request an unbounded catch-up

@@ -25,8 +25,10 @@
 - **Milliseconds and seconds** have explicit suffixes. The run clock consumes
   `run_clock_tick_ms` (17 ms) each tick for compatibility with existing gameplay
   and replays; this is separate from the 60 Hz simulation schedule.
-- **Frames** count presentations. Increasing `menu_transition_frames` lengthens
-  the fade at a given display frame rate. It does not change simulation speed.
+- **UI durations** use monotonic milliseconds. Increasing
+  `menu_transition_duration_ms` lengthens the fade equally at every display
+  frame rate. Game-over delays and replay expansion use the same clock; they
+  do not change simulation speed.
 - **Response coefficients** are applied each tick. Increasing
   `ship_acceleration_response` approaches the target speed sooner; reducing
   `ship_bank_retention` damps lateral movement more quickly. Brake energy capture

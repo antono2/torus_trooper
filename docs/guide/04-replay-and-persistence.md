@@ -39,7 +39,7 @@ sequenceDiagram
     end
 ```
 
-In [`App.run`](../../runtime/app.v#L1116), the live path appends the encoded input to
+In [`App.run`](../../runtime/app.v#L1125), the live path appends the encoded input to
 `recorded_inputs` before calling `update_with_input`. It copies the completed
 log into player data when the run ends. The replay path indexes the stored byte by
 `simulation.tick`. At the end of recorded input it enters the game-over tail;
@@ -53,7 +53,7 @@ checksums.
 The replay camera in [`replay_camera.v`](../../sim/replay_camera.v#L27) uses its own
 seeded state to choose cinematic views. The title can also show a ship-follow
 view. These choices change presentation, not the recorded gameplay inputs.
-Attract replay runs silently because [`App.run`](../../runtime/app.v#L1134) decides
+Attract replay runs silently because [`App.run`](../../runtime/app.v#L1143) decides
 when audio should play. Neither camera controls nor audio-device state need to
 be written into each tick's input byte.
 

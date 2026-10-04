@@ -26,6 +26,7 @@ cp "$binary" "$package/torus_trooper"
 cp -a "$repo_dir/shaders" "$repo_dir/sounds" "$repo_dir/models" "$repo_dir/docs" "$package/"
 cp "$repo_dir/LICENSE" "$repo_dir/README.md" "$repo_dir/CHANGELOG.md" "$repo_dir/TUNING.md" "$package/"
 cp "$repo_dir/thirdparty/miniaudio/LICENSE" "$package/thirdparty/miniaudio/"
+python3 "$repo_dir/scripts/build_shaders.py" --output-dir "$package/shaders"
 python3 "$repo_dir/scripts/bundle_linux_runtime.py" "$package" "$binary"
 # Resolve the bundled libraries even when the executable is launched directly.
 patchelf --force-rpath --set-rpath '$ORIGIN/lib' "$package/torus_trooper"

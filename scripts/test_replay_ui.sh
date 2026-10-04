@@ -39,6 +39,7 @@ window=$(xdotool search --onlyvisible --name '^Torus Trooper' | head -1)
 xdotool windowfocus --sync "$window"
 # The runtime writes the window title each menu/playback frame. Property events
 # acknowledge processed frames even when the text itself has not changed.
+: > "$test_dir/frames.log"
 stdbuf -oL xprop -spy -id "$window" _NET_WM_NAME > "$test_dir/frames.log" &
 frame_pid=$!
 wait_frames() {

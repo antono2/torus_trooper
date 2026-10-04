@@ -4,6 +4,9 @@
 import argparse
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
+from tempfile import TemporaryDirectory
+
+from build_shaders import build_shaders
 
 
 def main():
@@ -22,11 +25,16 @@ def main():
     files = [root / name for name in ("LICENSE", "README.md", "CHANGELOG.md", "TUNING.md")]
     files.append(root / "thirdparty/miniaudio/LICENSE")
     for directory in ("shaders", "sounds", "models", "docs"):
-        files.extend(path for path in sorted((root / directory).rglob("*")) if path.is_file())
-    with ZipFile(args.archive, "x", compression=ZIP_DEFLATED) as archive:
-        archive.write(args.binary, "torus-trooper/torus_trooper.exe")
-        for path in files:
-            archive.write(path, "torus-trooper/" + path.relative_to(root).as_posix())
+        files.extend(path for path in sorted((root / directory).rglob("*")) if path.is_file() and path.suffix != ".spv")
+    with TemporaryDirectory(prefix="torus-package-shaders-") as temporary:
+        shader_directory = Path(temporary)
+        build_shaders(root / "shaders", shader_directory)
+        with ZipFile(args.archive, "x", compression=ZIP_DEFLATED) as archive:
+            archive.write(args.binary, "torus-trooper/torus_trooper.exe")
+            for path in files:
+                archive.write(path, "torus-trooper/" + path.relative_to(root).as_posix())
+            for path in sorted(shader_directory.glob("*.spv")):
+                archive.write(path, "torus-trooper/shaders/" + path.name)
     print(f"Packaged {args.archive}")
 
 

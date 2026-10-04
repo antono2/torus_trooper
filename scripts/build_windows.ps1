@@ -65,6 +65,10 @@ try {
     # expect typed pointers; both have the same Windows x64 pointer ABI.
     $CompilerFlags = @('-cc', 'clang', '-cflags', '-Wno-incompatible-pointer-types')
     if ($Verify) {
+        & python scripts/test_build_tools.py
+        if ($LASTEXITCODE -ne 0) { throw "Build tool tests failed." }
+        & python scripts/build_shaders.py
+        if ($LASTEXITCODE -ne 0) { throw "Shader compilation failed." }
         $TestFlags = $CompilerFlags + @(
             '-cflags', "-I$(Join-Path $env:VULKAN_SDK 'Include')",
             '-cflags', "-I$GlfwInclude",
@@ -81,7 +85,7 @@ try {
             $TestIndex = 0
             foreach ($TestFile in $TestFiles) {
                 $TestExecutable = Join-Path $TestDirectory "torus-test-$TestIndex.exe"
-                & v @TestFlags -o $TestExecutable $TestFile
+                & python scripts/check_compiler_diagnostics.py -- v @TestFlags -o $TestExecutable $TestFile
                 if ($LASTEXITCODE -ne 0) { throw "Test compilation failed: $TestFile" }
                 $TestProcess = Start-Process -FilePath $TestExecutable `
                     -WorkingDirectory $ProjectDirectory -WindowStyle Hidden -PassThru
@@ -100,7 +104,11 @@ try {
             Remove-Item -LiteralPath $TestDirectory
         }
     }
-    & v @CompilerFlags -o $OutputPath .
+    if ($Verify) {
+        & python scripts/check_compiler_diagnostics.py -- v @CompilerFlags -o $OutputPath .
+    } else {
+        & v @CompilerFlags -o $OutputPath .
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Torus Trooper compilation failed."
     }

@@ -305,7 +305,7 @@ pub mut:
 	next_boss_spec           int
 	next_small_distance      f32
 	next_middle_distance     f32
-	next_boss_distance       f32 = 9_999_999
+	next_boss_distance       f32 = boss_distance_unscheduled
 	zone_transition_ticks    int = -1
 	palette_transition_ticks int = palette_transition_duration_ticks
 	multiplier_popup_cursor  int
@@ -1067,8 +1067,8 @@ fn (mut simulation Simulation) update_stage_spawning() {
 		simulation.palette_transition_ticks--
 	}
 	if simulation.stage.in_boss_mode {
-		if simulation.next_boss_distance > 99_999 {
-			simulation.next_boss_distance = f32(simulation.stage_random.next_int(50) + 100)
+		if simulation.next_boss_distance > boss_distance_unscheduled_threshold {
+			simulation.next_boss_distance = f32(simulation.stage_random.next_int(first_boss_distance_variation) + first_boss_min_distance)
 		}
 		simulation.next_boss_distance -= simulation.ship.speed
 		if simulation.stage.bosses_remaining > simulation.count_living_bosses()
@@ -1077,7 +1077,7 @@ fn (mut simulation Simulation) update_stage_spawning() {
 			// StageManager advances its boss counter even when the shared actor
 			// pool is full and addEnemy cannot install the scheduled boss.
 			simulation.next_boss_spec++
-			simulation.next_boss_distance = f32(simulation.stage_random.next_int(30) + 60)
+			simulation.next_boss_distance = f32(simulation.stage_random.next_int(following_boss_distance_variation) + following_boss_min_distance)
 		}
 		if simulation.next_boss_spec >= simulation.zone_specs.boss.len
 			&& simulation.count_living_bosses() == 0 && simulation.stage.in_boss_mode {
@@ -1245,7 +1245,7 @@ fn (mut simulation Simulation) install_next_zone() {
 	simulation.palette_transition_ticks = palette_transition_duration_ticks
 	simulation.next_small_distance = setup.next_small_distance
 	simulation.next_middle_distance = setup.next_middle_distance
-	simulation.next_boss_distance = 9_999_999
+	simulation.next_boss_distance = boss_distance_unscheduled
 }
 
 fn (mut simulation Simulation) fire_enemy_pattern(firing EnemyFire) {
@@ -1497,8 +1497,8 @@ fn (mut simulation Simulation) update_weapon(input InputState) {
 		&& simulation.side_fire_cooldown <= 0 {
 		simulation.side_fire_cooldown = side_fire_idle_ticks
 		speed_range := rules.max_speed - rules.default_speed
-		side_angle := clamp_f32((simulation.ship.speed - rules.default_speed) / speed_range * 0.1, 0.01, 0.1)
-		mut direction := side_angle * f32(simulation.side_fired_shots % 5) * 0.2
+		side_angle := clamp_f32((simulation.ship.speed - rules.default_speed) / speed_range * side_fire_max_angle, side_fire_min_angle, side_fire_max_angle)
+		mut direction := side_angle * f32(simulation.side_fired_shots % side_fire_angle_steps) * side_fire_angle_step_ratio
 		if simulation.side_fired_shots % 2 == 1 {
 			direction = -direction
 		}
@@ -1523,8 +1523,8 @@ fn (mut simulation Simulation) update_weapon(input InputState) {
 	}
 	mut side_interval := side_fire_idle_ticks
 	if simulation.ship.speed > rules.default_speed * side_fire_speed_ratio {
-		fire_density := (simulation.ship.speed - rules.default_speed * side_fire_speed_ratio) * 99999.0 / (rules.max_speed - rules.default_speed) + 1.0
-		side_interval = int(100000.0 / fire_density)
+		fire_density := (simulation.ship.speed - rules.default_speed * side_fire_speed_ratio) * side_fire_density_scale / (rules.max_speed - rules.default_speed) + 1.0
+		side_interval = int(side_fire_interval_numerator / fire_density)
 		if side_interval < 1 {
 			side_interval = 1
 		}

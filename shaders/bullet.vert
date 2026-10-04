@@ -1,4 +1,6 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "render_codes.glsl"
 
 // Four vec4s keep the compute/Vulkan boundary aligned: placement and payload,
 // scale plus forward sample, circumferential/radial samples, and the original
@@ -128,8 +130,8 @@ void main() {
 		? calibration_visual_kind(calibration_index) : raw_kind;
 	float visual_payload = calibration_visual ? 0.0 : instance_data.w;
     vec2 bullet = instance_data.xy;
-	bool player_visual = visual_kind > 0.5 && visual_kind < 1.5;
-	bool enemy_body_visual = visual_kind > 2.5 && visual_kind < 3.5;
+	bool player_visual = visual_kind > render_player_lower_bound && visual_kind < render_player_upper_bound;
+	bool enemy_body_visual = visual_kind > render_shot_upper_bound && visual_kind < render_enemy_upper_bound;
 	// Gameplay ships are emitted as closed, volumetric hull meshes. Keep these
 	// procedural cards only in the tuning scene, where they remain useful as
 	// selection proxies. Rendering both left the old axis-locked silhouette on
@@ -139,19 +141,19 @@ void main() {
 		gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
 		return;
 	}
-	bool player_shot_visual = visual_kind >= 2.0 && visual_kind < 2.5;
-	bool super_shot_visual = visual_kind >= 5.0 && visual_kind < 5.5;
-	bool boss_bit_visual = visual_kind > 4.5 && visual_kind < 4.9;
-	bool background_star_visual = visual_kind >= 6.5 && visual_kind < 6.75;
-	bool enemy_bullet_visual = visual_kind >= 7.0 && visual_kind < 19.5;
-	bool multiplier_popup_visual = visual_kind >= 19.5 && !calibration_visual
+	bool player_shot_visual = visual_kind >= render_shot_kind && visual_kind < render_shot_upper_bound;
+	bool super_shot_visual = visual_kind >= render_charged_shot_kind && visual_kind < render_charged_shot_upper_bound;
+	bool boss_bit_visual = visual_kind > render_boss_bit_lower_bound && visual_kind < render_boss_bit_upper_bound;
+	bool background_star_visual = visual_kind >= render_particle_star_kind && visual_kind < render_particle_fragment_kind;
+	bool enemy_bullet_visual = visual_kind >= render_bullet_kind && visual_kind < render_multiplier_lower_bound;
+	bool multiplier_popup_visual = visual_kind >= render_multiplier_lower_bound && !calibration_visual
 		&& !calibration_label;
-	bool surface_particle_visual = visual_kind >= 6.0 && visual_kind < 6.5;
+	bool surface_particle_visual = visual_kind >= render_particle_kind && visual_kind < render_particle_star_kind;
 	bool reflected_particle = surface_particle_visual
 		&& visual_payload > particle_reflection_heading_offset * 0.5;
 	float surface_payload = visual_payload
 		- (reflected_particle ? particle_reflection_heading_offset : 0.0);
-	bool surface_bound_visual = (visual_kind > 2.5 && visual_kind < 3.5)
+	bool surface_bound_visual = (visual_kind > render_shot_upper_bound && visual_kind < render_enemy_upper_bound)
 		|| boss_bit_visual
 		|| player_shot_visual || super_shot_visual
 		|| surface_particle_visual || background_star_visual || enemy_bullet_visual;
@@ -164,8 +166,8 @@ void main() {
 	float tangent_surface_radius = explicit_course_tangent ? instance_tangent_radius : 0.0;
 	float tangent_surface_angle = instance_tangent_angle;
 	float particle_height = 0.0;
-	if (visual_kind >= 6.0 && visual_kind < 7.0) {
-		float particle_code = visual_kind - 6.0;
+	if (visual_kind >= render_particle_kind && visual_kind < render_bullet_kind) {
+		float particle_code = visual_kind - render_particle_kind;
 		float particle_variant = floor(particle_code / 0.25 + 0.001);
 		float particle_detail = particle_code - particle_variant * 0.25;
 		int particle_payload = int(round(particle_detail / particle_payload_scale));
@@ -320,7 +322,7 @@ void main() {
 		// Multiplier labels are presentation feedback, not tunnel occupants. New
 		// hits enter at the top of a stable side list and push older labels down,
 		// so simultaneous hits can never cover one another or the flight path.
-		int popup_slot = int(round((instance_kind - 20.0) /
+		int popup_slot = int(round((instance_kind - render_multiplier_kind) /
 		                           multiplier_list_slot_kind_scale));
 		float horizontal_margin = 0.035;
 		vec2 popup_anchor = vec2(-1.0 + popup_size.x + horizontal_margin,
@@ -332,12 +334,12 @@ void main() {
 		                   0.0, clip_zoom);
 		return;
 	}
-	float charge_ratio = clamp((instance_kind - 5.0) / 0.49, 0.0, 1.0);
+	float charge_ratio = clamp((instance_kind - render_charged_shot_kind) / 0.49, 0.0, 1.0);
 	float charge_size = 0.020 * charge_ratio * 13.6;
-	float shot_code = clamp(instance_kind - 2.0, 0.0, 0.49);
+	float shot_code = clamp(instance_kind - render_shot_kind, 0.0, 0.49);
 	bool star_shell = shot_code >= 0.2;
 	float shot_size = clamp((shot_code - (star_shell ? 0.25 : 0.0)) / 0.1, 0.0, 1.0);
-	float particle_code = max(visual_kind - 6.0, 0.0);
+	float particle_code = max(visual_kind - render_particle_kind, 0.0);
 	float particle_variant = floor(particle_code / 0.25 + 0.001);
 	float particle_detail = particle_code - particle_variant * 0.25;
 	int particle_payload = int(round(particle_detail / particle_payload_scale));
@@ -355,13 +357,13 @@ void main() {
     float particle_size = (0.005 + particle_life * 0.014
 		+ (particle_variant == 2.0 ? 0.008 : 0.0))
 		* (particle_variant == 3.0 ? 1.0 + particle_tier * 0.48 : 1.0);
-	float enemy_tier = clamp(floor((visual_kind - 3.0) /
+	float enemy_tier = clamp(floor((visual_kind - render_enemy_kind) /
 	                               enemy_shape_tier_stride + 0.001), 0.0, 2.0);
 	float enemy_size = enemy_tier < 0.5 ? 0.024
 		: enemy_tier < 1.5 ? 0.056 : 0.105;
-	float bullet_code = max(visual_kind - 7.0, 0.0);
+	float bullet_code = max(visual_kind - render_bullet_kind, 0.0);
 	int bullet_shape = int(floor(bullet_code + 0.001));
-	bool disappearing_bullet = visual_kind >= 7.0 && (bullet_shape & 1) != 0;
+	bool disappearing_bullet = visual_kind >= render_bullet_kind && (bullet_shape & 1) != 0;
 	float bullet_detail = fract(bullet_code);
 	float bullet_visual_scale = bullet_detail >= 0.5 ? 1.2 : 1.0;
 	float bullet_fade = disappearing_bullet
@@ -371,11 +373,11 @@ void main() {
 		: player_shot_visual ? 0.012 * shot_size
 		: super_shot_visual ? charge_size
 		: boss_bit_visual ? 0.030
-		: (visual_kind > 2.5 && visual_kind < 3.5) ? enemy_size
-		: visual_kind > 5.5 ? particle_size : 0.010;
-	if (visual_kind >= 7.0 && visual_kind < 62.5)
+		: (visual_kind > render_shot_upper_bound && visual_kind < render_enemy_upper_bound) ? enemy_size
+		: visual_kind > render_charged_shot_upper_bound ? particle_size : 0.010;
+	if (visual_kind >= render_bullet_kind && visual_kind < render_tunnel_lower_bound)
 		base_size = 0.012 * bullet_visual_scale * bullet_fade;
-	if (visual_kind > 62.5) base_size = tunnel_radius / (4.62 * 0.94);
+	if (visual_kind > render_tunnel_lower_bound) base_size = tunnel_radius / (4.62 * 0.94);
 	base_size *= abs(instance_scale);
 	// Source actors are world-space geometry. Reciprocal-depth projection keeps
 	// their physical footprint constant; the former square-root falloff made
@@ -444,7 +446,7 @@ void main() {
 		// masks the attached exhaust instead of the flame painting over its nose.
 		visual_depth = 0.0;
     }
-	bool enemy_visual = visual_kind > 2.5 && visual_kind < 4.9;
+	bool enemy_visual = visual_kind > render_shot_upper_bound && visual_kind < render_boss_bit_upper_bound;
     if (super_shot_visual) {
 		// The charged weapon spans several source units and remains a luminous
 		// foreground effect so its long blades are not cut up by its own slice.

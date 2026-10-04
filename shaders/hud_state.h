@@ -18,4 +18,15 @@
 #define TT_HUD_FPS_MASK 1023
 #define TT_HUD_FPS_MAX_DISPLAY 999
 
+// Title selection IDs carried by remaining_time_ms when TT_HUD_TITLE is set.
+// Matches runtime/menu.v; the replay library uses its own overlay payload.
+#define TT_MENU_NORMAL 0
+#define TT_MENU_HARD 1
+#define TT_MENU_EXTREME 2
+#define TT_MENU_SETTINGS 3
+#define TT_MENU_HELP 4
+#define TT_MENU_TUNE 5
+#define TT_MENU_EXIT 6
+#define TT_MENU_REPLAYS 7
+
 #endif

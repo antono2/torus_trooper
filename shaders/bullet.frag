@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#include "render_codes.glsl"
 #include "palette.glsl"
 
 // Animate one color channel without changing the base hue elsewhere.
@@ -299,7 +300,7 @@ void main() {
 		color = vec4(label_color * (1.0 - display.transition_fade), 1.0);
 		return;
 	}
-	if (instance_kind >= 19.5 && instance_kind < 30.0) {
+	if (instance_kind >= render_multiplier_lower_bound && instance_kind < render_multiplier_upper_bound) {
 		int popup_code = int(floor(instance_payload));
 		int multiplier = clamp(popup_code - (popup_code >= multiplier_large_label_offset
 			? multiplier_large_label_offset : 0), 2, 100);
@@ -323,29 +324,29 @@ void main() {
     float shape_alpha = 1.0;
 	float particle_luminosity = 1.0;
 	float output_alpha = 1.0;
-	bool reflected_particle = instance_kind >= 6.0 && instance_kind < 7.0
+	bool reflected_particle = instance_kind >= render_particle_kind && instance_kind < render_bullet_kind
 		&& instance_payload > particle_reflection_heading_offset * 0.5;
 
-    if (instance_kind < 0.5) {
+    if (instance_kind < render_player_lower_bound) {
         visible = radius < 0.82;
         selected = add_green_glow(color_exhaust_orange, glow * exhaust_orange_glow_amplitude);
-    } else if (instance_kind < 1.5) {
+    } else if (instance_kind < render_player_upper_bound) {
         visible = player_ship(p);
         selected = add_green_glow(color_player_aqua, glow * player_aqua_glow_amplitude);
-    } else if (instance_kind < 2.5) {
+    } else if (instance_kind < render_shot_upper_bound) {
         float field = radial_blade_field(p, 4.0);
         float aa = max(fwidth(field), 0.002);
         shape_alpha = 1.0 - smoothstep(-aa, aa, field);
         visible = shape_alpha > 0.0;
         float core = 1.0 - smoothstep(-0.14 - aa, -0.14 + aa, field);
-        vec3 hot = instance_kind >= 2.2 ? color_shot_gold
+        vec3 hot = instance_kind >= render_star_shot_color_threshold ? color_shot_gold
                                        : color_shot_mint;
         selected = mix(color_shot_outline_navy, hot, core);
-    } else if (instance_kind < 3.5) {
-        uint enemy_tier = uint(clamp(floor((instance_kind - 3.0) /
+    } else if (instance_kind < render_enemy_upper_bound) {
+        uint enemy_tier = uint(clamp(floor((instance_kind - render_enemy_kind) /
                                            enemy_shape_tier_stride + 0.001),
                                       0.0, 2.0));
-        float tier_base = 3.0 + float(enemy_tier) * enemy_shape_tier_stride;
+        float tier_base = render_enemy_kind + float(enemy_tier) * enemy_shape_tier_stride;
         uint packed_shape = uint(round((instance_kind - tier_base) *
                                        enemy_shape_code_multiplier));
         bool enemy_damaged = packed_shape >= enemy_damaged_code_offset;
@@ -354,11 +355,11 @@ void main() {
         float tint = shape_value(shape_seed, 5u);
         selected = enemy_damaged ? color_white
             : mix(color_enemy_crimson, color_enemy_indigo, tint * 0.42);
-    } else if (instance_kind < 4.9) {
+    } else if (instance_kind < render_boss_bit_upper_bound) {
         visible = boss_bit(p);
         selected = radius > 0.68 ? color_boss_bit_outline_plum
                                  : add_green_glow(color_boss_bit_orange, glow * boss_bit_orange_glow_amplitude);
-	} else if (instance_kind < 5.5) {
+	} else if (instance_kind < render_charged_shot_upper_bound) {
 		float surface_light;
         float field = charged_weapon_field(p, surface_light);
         float aa = max(fwidth(field), 0.002);
@@ -367,11 +368,11 @@ void main() {
         float core = 1.0 - smoothstep(-0.020 - aa, -0.020 + aa, field);
         selected = mix(color_shot_outline_navy,
                        color_shot_mint * mix(0.65, 1.0, surface_light), core);
-	} else if (instance_kind > 62.5) {
+	} else if (instance_kind > render_tunnel_lower_bound) {
 		visible = abs(radius - 0.94) < 0.035;
 		selected = color_calibration_tunnel_cyan;
-	} else if (instance_kind >= 7.0) {
-		int bullet_shape = int(floor(instance_kind - 7.0 + 0.01));
+	} else if (instance_kind >= render_bullet_kind) {
+		int bullet_shape = int(floor(instance_kind - render_bullet_kind + 0.01));
 		bool wire = (bullet_shape & 1) != 0;
 		int family = bullet_shape / 2;
 		float field;
@@ -396,7 +397,7 @@ void main() {
         selected = mix(color_bullet_outline_plum,
                        add_green_glow(color_bullet_orange, glow * bullet_orange_glow_amplitude), core);
 	} else {
-		float particle_code = instance_kind - 6.0;
+		float particle_code = instance_kind - render_particle_kind;
 		float particle_variant = floor(particle_code / 0.25 + 0.001);
 		float particle_detail = particle_code - particle_variant * 0.25;
 		int particle_payload = int(round(particle_detail / particle_payload_scale));
@@ -429,7 +430,7 @@ void main() {
 		}
     }
 
-	bool tunnel_visual = instance_kind > 62.5;
+	bool tunnel_visual = instance_kind > render_tunnel_lower_bound;
 	bool calibration_mesh_proxy = instance_selected > 1.5;
 	bool selection_border = (calibration_mesh_proxy ? instance_selected > 2.5
 		: instance_selected > 0.5)

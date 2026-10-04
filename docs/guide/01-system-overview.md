@@ -10,7 +10,7 @@ arrangements.
 
 [`main`](../../torus_trooper.v#L7) parses launch options and chooses
 between [`run_headless`](../../torus_trooper.v#L624) and
-[`runtime.new_app`](../../runtime/app.v#L307). In graphical
+[`runtime.new_app`](../../runtime/app.v#L280). In graphical
 mode, `App.run` owns the window loop. In headless mode, `run_headless` constructs
 the same [`sim.Simulation`](../../sim/simulation.v#L257), calls `update` a requested
 number of times, then prints checksums. These are two hosts for one game model.
@@ -33,7 +33,7 @@ sequenceDiagram
 ```
 
 The loop uses a real-time accumulator in
-[`App.run`](../../runtime/app.v#L1169); it consumes one `1 / ticks_per_second` interval
+[`App.run`](../../runtime/app.v#L1087); it consumes one `1 / ticks_per_second` interval
 for each simulation update. The constant is 60 in
 [`ticks_per_second`](../../sim/gameplay_tuning.v#L6). The runtime caps a single elapsed
 interval at 0.25 seconds so a long stall cannot request an unbounded catch-up

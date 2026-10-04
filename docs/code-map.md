@@ -9,6 +9,9 @@
 | Run time, weapon timing, respawn protection, ship response | [`sim/gameplay_tuning.v`](../sim/gameplay_tuning.v) | Changes simulation rules. Durations and response coefficients are grouped by purpose. |
 | Difficulty | [`sim/rules.v`](../sim/rules.v) | Per-grade speed, bank and stage progression values. |
 | Fresh-profile settings, window size, menu transitions | [`runtime/settings.v`](../runtime/settings.v) | Shared defaults for command-line parsing, runtime configuration and saved player data. Existing saved preferences still take precedence unless an option is explicit. |
+| Menu navigation and settings application | [`runtime/menu.v`](../runtime/menu.v) | Applies settings, saves preferences and updates the title HUD. |
+| Session and replay lifecycle | [`runtime/game_session.v`](../runtime/game_session.v), [`runtime/replay_ui.v`](../runtime/replay_ui.v) | Constructs live/recorded simulations and handles the replay library's platform events. |
+| Presentation state | [`runtime/presentation.v`](../runtime/presentation.v) | Fade, camera and title/replay visibility decisions. |
 | Object sizes and shot distance | [`runtime/object_sizes.v`](../runtime/object_sizes.v) | Default size catalog; the TUNE scene and `object_sizes.json` provide runtime overrides. |
 | Level wire/panel and base hull colors | [`sim/palette.v`](../sim/palette.v) | Named RGB colors selected by the simulation and mesh generator. |
 | HUD, projectile, particle and ship-trim colors | [`shaders/palette.glsl`](../shaders/palette.glsl) | Named colors shared by the rendering shaders. |
@@ -50,7 +53,12 @@ Some numbers describe a data format rather than a visual or gameplay preference:
   pause, restart, back and volume actions. Their positions match `TTInputAction`
   in the C bridge.
 - [`shaders/hud_state.h`](../shaders/hud_state.h) defines menu/gameplay state
-  flags and packed FPS bits once for both C and GLSL.
+  flags, menu IDs and packed FPS bits for C and GLSL. Menu IDs match the explicit
+  `TitleMenuItem` values in `runtime/menu.v`; display order is independent.
+- [`sim/render_codes.v`](../sim/render_codes.v) and
+  [`shaders/render_codes.glsl`](../shaders/render_codes.glsl) name packed object
+  families. Shader decoder boundaries include fractional payload ranges.
+  `scripts/test_build_tools.py` checks CPU/GPU constants and menu IDs for drift.
 - Mesh vertex coordinates, font bitmaps, array indices and mathematical
   identities stay close to the algorithms that use them. Their surrounding
   fields and layout comments explain the data; they are not global tuning knobs.
@@ -66,12 +74,12 @@ files; the runtime does not read shader source. With `glslangValidator` and
 `spirv-val` installed, rebuild and validate from the repository root:
 
 ```sh
-for source in shaders/*.vert shaders/*.frag; do
-    glslangValidator -V "$source" -o "$source.spv"
-    spirv-val "$source.spv"
-done
+python3 scripts/build_shaders.py
 ```
 
-Commit the rebuilt binaries along with their shader sources. Use the
+Commit the rebuilt binaries along with their shader sources. CI tests freshly
+compiled shaders, and both packagers compile and validate shaders again in a
+staging directory so an archive cannot silently ship stale binaries. The helper
+finds tools on `PATH` or in `VULKAN_SDK/bin` (`Bin` on Windows). Use the
 [verification commands](technical-reference.md#verification) to check gameplay,
 saved data and runtime behavior after source changes.

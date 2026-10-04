@@ -19,20 +19,20 @@ fn main() {
 		eprintln(err)
 		exit(2)
 	}
-	brightness := percentage_argument(launch_args, ['--brightness', '-brightness'], 100) or {
+	brightness := percentage_argument(launch_args, ['--brightness', '-brightness'], runtime.default_brightness_percent) or {
 		eprintln(err)
 		exit(2)
 	}
 	luminosity := percentage_argument(launch_args, ['--luminosity', '--luminous', '-luminosity',
-		'-luminous'], 80) or {
+		'-luminous'], runtime.default_luminosity_percent) or {
 		eprintln(err)
 		exit(2)
 	}
-	near_blur := percentage_argument(launch_args, ['--near-blur'], 80) or {
+	near_blur := percentage_argument(launch_args, ['--near-blur'], runtime.default_near_blur_percent) or {
 		eprintln(err)
 		exit(2)
 	}
-	near_fade := percentage_argument(launch_args, ['--near-fade'], 65) or {
+	near_fade := percentage_argument(launch_args, ['--near-fade'], runtime.default_near_fade_percent) or {
 		eprintln(err)
 		exit(2)
 	}
@@ -266,8 +266,8 @@ fn selection_argument_explicit(launch_args []string) bool {
 }
 
 struct WindowSize {
-	width  int = 1280
-	height int = 720
+	width  int = runtime.default_window_width
+	height int = runtime.default_window_height
 }
 
 fn resolution_argument(launch_args []string) !WindowSize {
@@ -310,12 +310,12 @@ fn fullscreen_argument(launch_args []string) bool {
 }
 
 fn rear_track_blend_argument(launch_args []string) !int {
-	mut percent := 10
+	mut percent := runtime.default_rear_track_blend_percent
 	for index, argument in launch_args {
 		if argument == '--no-rear-track-blend' {
 			percent = 0
 		} else if argument == '--rear-track-blend' {
-			percent = 10
+			percent = runtime.default_rear_track_blend_percent
 		} else if argument == '--rear-track-blend-percent' {
 			if index + 1 >= launch_args.len {
 				return error('--rear-track-blend-percent requires a value from 0 to 100')
@@ -332,7 +332,7 @@ fn rear_track_blend_argument(launch_args []string) !int {
 }
 
 fn track_draw_distance_argument(launch_args []string) !int {
-	mut value := 75
+	mut value := runtime.default_track_draw_distance
 	for index, argument in launch_args {
 		if argument == '--track-draw-distance' {
 			if index + 1 >= launch_args.len {
@@ -343,14 +343,14 @@ fn track_draw_distance_argument(launch_args []string) !int {
 			value = argument.all_after('=').int()
 		}
 	}
-	if value < 0 || value > 999 {
+	if value < runtime.minimum_track_draw_distance || value > runtime.maximum_track_draw_distance {
 		return error('track draw distance must be from 0 to 999')
 	}
 	return value
 }
 
 fn wire_draw_distance_argument(launch_args []string) !int {
-	mut value := 120
+	mut value := runtime.default_wire_draw_distance
 	for index, argument in launch_args {
 		if argument == '--wire-draw-distance' {
 			if index + 1 >= launch_args.len {
@@ -361,14 +361,14 @@ fn wire_draw_distance_argument(launch_args []string) !int {
 			value = argument.all_after('=').int()
 		}
 	}
-	if value < 0 || value > 999 {
+	if value < runtime.minimum_track_draw_distance || value > runtime.maximum_track_draw_distance {
 		return error('wire draw distance must be from 0 to 999')
 	}
 	return value
 }
 
 fn border_draw_distance_argument(launch_args []string) !int {
-	mut value := 120
+	mut value := runtime.default_border_draw_distance
 	for index, argument in launch_args {
 		if argument == '--border-draw-distance' {
 			if index + 1 >= launch_args.len {
@@ -379,7 +379,7 @@ fn border_draw_distance_argument(launch_args []string) !int {
 			value = argument.all_after('=').int()
 		}
 	}
-	if value < 0 || value > 999 {
+	if value < runtime.minimum_track_draw_distance || value > runtime.maximum_track_draw_distance {
 		return error('border draw distance must be from 0 to 999')
 	}
 	return value
@@ -486,7 +486,7 @@ fn grade_argument(launch_args []string) !sim.Grade {
 }
 
 fn audio_volume_argument(launch_args []string) f32 {
-	mut volume := f32(0.35)
+	mut volume := runtime.default_volume
 	for index, argument in launch_args {
 		if argument == '--volume' && index + 1 < launch_args.len {
 			volume = launch_args[index + 1].f32()
@@ -513,7 +513,7 @@ fn audio_volume_argument_explicit(launch_args []string) bool {
 }
 
 fn antialiasing_argument(launch_args []string) !int {
-	mut samples := 8
+	mut samples := runtime.default_antialiasing_samples
 	for index, argument in launch_args {
 		if argument in ['--antialiasing', '--msaa'] {
 			if index + 1 >= launch_args.len {

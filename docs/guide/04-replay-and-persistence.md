@@ -10,9 +10,9 @@ compatible.
 
 ## Encode game actions, not devices
 
-[`Replay`](../../sim/replay.v#L3) contains `grade`, `starting_level`,
-`random_seed`, `inputs`, `player_shot_distance`, and `god_mode`. [`encode_input`](../../sim/replay.v#L13) assigns bits
-to the six fields of `InputState`; [`decode_input`](../../sim/replay.v#L36)
+[`Replay`](../../sim/replay.v#L12) contains `grade`, `starting_level`,
+`random_seed`, `inputs`, `player_shot_distance`, and `god_mode`. [`encode_input`](../../sim/replay.v#L22) assigns bits
+to the six fields of `InputState`; [`decode_input`](../../sim/replay.v#L45)
 reverses that mapping. A keyboard, controller, or
 rebound key therefore produces the same replay byte when it means the same
 game action. The format records a tick's actions, not when a key event arrived
@@ -39,7 +39,7 @@ sequenceDiagram
     end
 ```
 
-In [`App.run`](../../runtime/app.v#L1213), the live path appends the encoded input to
+In [`App.run`](../../runtime/app.v#L1198), the live path appends the encoded input to
 `recorded_inputs` before calling `update_with_input`. It copies the completed
 log into player data when the run ends. The replay path indexes the stored byte by
 `simulation.tick`. At the end of recorded input it enters the game-over tail;
@@ -53,7 +53,7 @@ checksums.
 The replay camera in [`replay_camera.v`](../../sim/replay_camera.v#L27) uses its own
 seeded state to choose cinematic views. The title can also show a ship-follow
 view. These choices change presentation, not the recorded gameplay inputs.
-Attract replay runs silently because [`App.run`](../../runtime/app.v#L1231) decides
+Attract replay runs silently because [`App.run`](../../runtime/app.v#L1216) decides
 when audio should play. Neither camera controls nor audio-device state need to
 be written into each tick's input byte.
 

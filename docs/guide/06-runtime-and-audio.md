@@ -1,18 +1,18 @@
 # 6. Own resources and turn state into side effects
 
 The simulation can be replayed because it does not own a window, sound
-device, or Vulkan allocation. [`runtime.App`](../../runtime/app.v#L288) owns those
+device, or Vulkan allocation. [`runtime.App`](../../runtime/app.v#L273) owns those
 resources and translates state changes into effects. This chapter explains
 why ownership sits there and when other service designs would be preferable.
 
 ## Keep one owner for native resources
 
-[`new_app`](../../runtime/app.v#L322) initializes the Vulkan loader, creates
+[`new_app`](../../runtime/app.v#L307) initializes the Vulkan loader, creates
 the GLFW/Vulkan platform, sets input bindings, creates the mapped vertex
 buffers, opens a compute
 session, loads object sizes, and then attempts audio creation. Each failed
 step releases what has already been created.
-[`App.shutdown`](../../runtime/app.v#L2051) stops audio and
+[`App.shutdown`](../../runtime/app.v#L2023) stops audio and
 compute first, waits for the device to become idle before freeing Vulkan
 memory, and destroys the platform last. Calling `shutdown` again is safe
 because each released handle is cleared.
@@ -40,7 +40,7 @@ target to use.
 ## Understand the V–C boundary
 
 [`runtime/app.v`](../../runtime/app.v#L42) declares `C.tt_platform_*` functions;
-[`vulkan_bridge.h`](../../runtime/vulkan_bridge.h#L119) implements the platform,
+[`vulkan_bridge.h`](../../runtime/vulkan_bridge.h#L127) implements the platform,
 swapchain, pipelines, per-frame commands, input mapping, and presentation.
 [`vulkan_memory.v`](../../runtime/vulkan_memory.v#L52) owns the three mapped
 vertex buffers through the V Vulkan allocator. It attaches their handles and
@@ -60,8 +60,8 @@ code, but it is not a general claim that V programs need a C renderer.
 
 The simulation increments counters such as `fired_shots`, `enemy_hits`, and
 `warning_beeps`; it does not call an audio API. `capture_audio_state` in
-[`runtime/app.v`](../../runtime/app.v#L2125) takes values before a tick.
-[`play_simulation_audio`](../../runtime/app.v#L2148) compares those values with
+[`runtime/app.v`](../../runtime/app.v#L2097) takes values before a tick.
+[`play_simulation_audio`](../../runtime/app.v#L2120) compares those values with
 the values after the tick and selects sound effects or music transitions.
 [`audio.v`](../../runtime/audio.v#L78)
 is a small V wrapper around [`audio_bridge.h`](../../runtime/audio_bridge.h),

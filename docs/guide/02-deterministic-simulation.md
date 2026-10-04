@@ -8,8 +8,8 @@ entity-storage choices.
 
 ## State, time, and input
 
-[`SimulationConfig`](../../sim/simulation.v#L242) holds the initial grade, capacities,
-seed, and enabled rules. [`Simulation`](../../sim/simulation.v#L267) owns the mutable
+[`SimulationConfig`](../../sim/simulation.v#L232) holds the initial grade, capacities,
+seed, and enabled rules. [`Simulation`](../../sim/simulation.v#L257) owns the mutable
 ship, entity pools, score, clock, stage, course, and random generators. One call
 to `update_with_input(InputState)` advances exactly one tick; its caller decides
 when to call it. There is no wall-clock read inside that update.
@@ -40,7 +40,7 @@ replay results even if the individual functions are unchanged.
 ## Randomness is explicit state
 
 [`rng.v`](../../sim/rng.v#L9) implements MT19937.
-[`new_simulation`](../../sim/simulation.v#L342) creates
+[`new_simulation`](../../sim/simulation.v#L332) creates
 separate seeded streams for stage, barrage, enemy, shot, particle, ship, and
 other decisions. One subsystem can then consume an extra draw without shifting
 another subsystem's sequence. The course generator also receives an explicit
@@ -137,7 +137,7 @@ live bullet needs it. [Intel's layout discussion](https://www.intel.com/content/
 describes why the access pattern decides among these layouts.
 
 The common operation is often called the *fast path*: it should do only the
-work needed for that case. In [`update_bullets`](../../sim/simulation.v#L471),
+work needed for that case. In [`update_bullets`](../../sim/simulation.v#L461),
 a bullet with no active pattern skips pattern execution. A dead slot also
 skips motion, but the loop still visits it and clears its pattern's active
 flag. These are shorter paths through one iteration, not active-only passes

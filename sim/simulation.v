@@ -2,9 +2,6 @@ module sim
 
 import math
 
-pub const ticks_per_second = 60
-const source_player_shot_distance = f32(35)
-
 pub struct Vec2 {
 pub mut:
 	x f32
@@ -37,7 +34,7 @@ pub mut:
 	distance                 f32
 	course_position          f32
 	lap                      int = 1
-	sight_depth              f32 = 35
+	sight_depth              f32 = ship_base_sight_depth
 	screen_shake_ticks       int
 	screen_shake_intensity   f32
 	camera_shake_angle       f32
@@ -45,16 +42,9 @@ pub mut:
 	camera_shake_y           f32
 	regenerative_charge      f32
 	hits                     int
-	invulnerable_ticks       int = 228
-	lifecycle_counter        int = -228
+	invulnerable_ticks       int = ship_spawn_invulnerability_ticks
+	lifecycle_counter        int = -ship_spawn_invulnerability_ticks
 }
-
-// Keep the five-unit longitudinal span, but center it around the neutral start.
-// This gives the player room to move toward the chase camera while preventing
-// the hull from travelling as far down the tunnel as the former 0..5 range.
-const relative_depth_min = f32(-2.5)
-const relative_depth_max = f32(2.5)
-const relative_depth_step = f32(0.05)
 
 pub struct Bullet {
 pub mut:
@@ -280,7 +270,7 @@ pub mut:
 	compute_stats            ComputeStats
 	compute_session          &ComputeSession = unsafe { nil }
 	fire_cooldown            int
-	side_fire_cooldown       int = 99999
+	side_fire_cooldown       int = side_fire_idle_ticks
 	charging_shot            int = -1
 	fired_shots              int
 	side_fired_shots         int
@@ -294,7 +284,7 @@ pub mut:
 	enemy_shots_fired        int
 	score                    int
 	remaining_time_ms        int
-	next_beep_time_ms        int = 15_000
+	next_beep_time_ms        int = clock_warning_start_ms
 	next_extend_score        int = 100000
 	time_extensions          int
 	time_change_ticks        int = -1
@@ -317,7 +307,7 @@ pub mut:
 	next_middle_distance     f32
 	next_boss_distance       f32 = 9_999_999
 	zone_transition_ticks    int = -1
-	palette_transition_ticks int = 60
+	palette_transition_ticks int = palette_transition_duration_ticks
 	multiplier_popup_cursor  int
 	next_star_distance       f32
 	shot_cursor              int
@@ -410,18 +400,18 @@ pub fn (mut simulation Simulation) update_with_input(input InputState) {
 		}
 	}
 	next_lifecycle_counter := simulation.ship.lifecycle_counter + 1
-	respawning := !simulation.game_over && simulation.ship.lifecycle_counter < -228
-		&& next_lifecycle_counter == -228
+	respawning := !simulation.game_over && simulation.ship.lifecycle_counter < -ship_spawn_invulnerability_ticks
+		&& next_lifecycle_counter == -ship_spawn_invulnerability_ticks
 	if simulation.game_over {
 		active_input = InputState{}
 		simulation.ship.speed *= 0.9
 		simulation.clear_live_bullets()
-		if next_lifecycle_counter < -228 {
+		if next_lifecycle_counter < -ship_spawn_invulnerability_ticks {
 			// The source holds a destroyed ship at the start of its restart delay
 			// for as long as the game-over presentation remains active.
-			simulation.ship.lifecycle_counter = -269
+			simulation.ship.lifecycle_counter = -ship_respawn_protection_ticks - 1
 		}
-	} else if next_lifecycle_counter < -228 {
+	} else if next_lifecycle_counter < -ship_spawn_invulnerability_ticks {
 		active_input = InputState{}
 		simulation.ship.relative_depth *= 0.99
 		simulation.clear_live_bullets()
@@ -542,11 +532,11 @@ fn (mut simulation Simulation) update_bullets() {
 		}
 		if bullet.disappear_ticks > 0 {
 			bullet.disappear_ticks++
-			if bullet.disappear_ticks > 45 {
+			if bullet.disappear_ticks > bullet_disappear_duration_ticks {
 				bullet.alive = false
 				bullet.disappear_ticks = 0
 			}
-		} else if bullet.age > 600 {
+		} else if bullet.age > bullet_max_age_ticks {
 			bullet.start_disappearing()
 		}
 		if !bullet.alive {
@@ -582,11 +572,11 @@ fn (mut simulation Simulation) update_clock() {
 		return
 	}
 	for !simulation.game_over && simulation.score > simulation.next_extend_score {
-		simulation.change_time(15)
+		simulation.change_time(score_extend_seconds)
 		simulation.next_extend_score += extend_score_for_level(simulation.level)
 		simulation.time_extensions++
 	}
-	simulation.remaining_time_ms -= 17
+	simulation.remaining_time_ms -= run_clock_tick_ms
 	if simulation.time_change_ticks >= 0 {
 		simulation.time_change_ticks--
 	}
@@ -619,11 +609,11 @@ fn (mut simulation Simulation) change_time(seconds int) {
 		simulation.remaining_time_ms = simulation.config.run_time_ms
 	}
 	simulation.next_beep_time_ms = (simulation.remaining_time_ms / 1000) * 1000
-	if simulation.next_beep_time_ms > 15_000 {
-		simulation.next_beep_time_ms = 15_000
+	if simulation.next_beep_time_ms > clock_warning_start_ms {
+		simulation.next_beep_time_ms = clock_warning_start_ms
 	}
 	simulation.time_change_seconds = seconds
-	simulation.time_change_ticks = 240
+	simulation.time_change_ticks = time_change_display_ticks
 }
 
 fn steer_enemy_bank(bank f32, angle f32, target f32, bank_max f32) f32 {
@@ -718,7 +708,7 @@ fn (simulation &Simulation) prepare_generated_enemy_motion(mut enemy Enemy, pass
 		enemy.speed += (0 - enemy.speed) * 0.05
 		enemy.flip_ticks = 0
 		enemy.flip_velocity = Vec2{}
-	} else if simulation.ship.lifecycle_counter < -228 {
+	} else if simulation.ship.lifecycle_counter < -ship_spawn_invulnerability_ticks {
 		enemy.speed += (1.5 - enemy.speed) * 0.15
 	}
 	aim_speed := if spec.has_limit_depth || (enemy.position.y > 5 && enemy.position.y < 70) {
@@ -816,7 +806,11 @@ fn (mut simulation Simulation) update_enemies() {
 			spawn_angle := simulation.next_random_f32() * f32(math.pi * 2)
 			turn_scale := if kind == 2 {
 				f32(0)
-			} else if kind == 1 { f32(0.005) } else { f32(0.003) }
+			} else if kind == 1 {
+				f32(0.005)
+			} else {
+				f32(0.003)
+			}
 			base_turn := (simulation.next_random_f32() * 2 - 1) * turn_scale
 			enemy = Enemy{
 				alive: true
@@ -826,11 +820,19 @@ fn (mut simulation Simulation) update_enemies() {
 				}
 				health: if kind == 2 {
 					30
-				} else if kind == 1 { 10 } else { 1 }
+				} else if kind == 1 {
+					10
+				} else {
+					1
+				}
 				kind: kind
 				score: if kind == 2 {
 					2000
-				} else if kind == 1 { 500 } else { 100 }
+				} else if kind == 1 {
+					500
+				} else {
+					100
+				}
 				pattern: simulation.spawned_enemies % 3
 				base_turn: base_turn
 			}
@@ -891,7 +893,7 @@ fn (mut simulation Simulation) update_enemies() {
 		enemy.position.x = wrap_angle(enemy.position.x)
 		generated_spec := simulation.enemy_spec_for(enemy.kind, enemy.spec_index)
 		if simulation.config.collisions && enemy.flip_ticks <= 0
-			&& simulation.zone_transition_ticks < 0 && simulation.ship.lifecycle_counter >= -228
+			&& simulation.zone_transition_ticks < 0 && simulation.ship.lifecycle_counter >= -ship_spawn_invulnerability_ticks
 			&& simulation.enemy_touches_ship(enemy, generated_spec) {
 			direction := f32(math.atan2(angle_delta(simulation.ship.angle, enemy.previous_position.x), enemy.previous_position.y))
 			enemy.flip_ticks = 48
@@ -1010,10 +1012,18 @@ fn (simulation &Simulation) enemy_spec_for(kind int, index int) EnemySpec {
 		kind: kind
 		shield: if kind == 2 {
 			30
-		} else if kind == 1 { 10 } else { 1 }
+		} else if kind == 1 {
+			10
+		} else {
+			1
+		}
 		score: if kind == 2 {
 			2000
-		} else if kind == 1 { 500 } else { 100 }
+		} else if kind == 1 {
+			500
+		} else {
+			100
+		}
 		base_speed: 0.1
 		ship_speed_ratio: 0.5
 		collision_size: simulation.default_enemy_collisions[fallback_kind]
@@ -1072,7 +1082,7 @@ fn (mut simulation Simulation) update_stage_spawning() {
 		if simulation.next_boss_spec >= simulation.zone_specs.boss.len
 			&& simulation.count_living_bosses() == 0 && simulation.stage.in_boss_mode {
 			simulation.stage.force_zone_complete()
-			simulation.zone_transition_ticks = 60
+			simulation.zone_transition_ticks = zone_transition_duration_ticks
 		}
 		return
 	}
@@ -1177,14 +1187,18 @@ fn (mut simulation Simulation) record_enemy_rank_up(is_boss bool) {
 	}
 	if simulation.stage.rank_up(is_boss) {
 		if simulation.config.run_time_ms > 0 {
-			bonus := if simulation.zone % 2 == 1 { 30 } else { 45 }
+			bonus := if simulation.zone % 2 == 1 {
+				odd_zone_bonus_seconds
+			} else {
+				even_zone_bonus_seconds
+			}
 			simulation.change_time(bonus)
 		}
 		if simulation.zone % 2 == 0 {
-			simulation.music_change_ticks = 90
+			simulation.music_change_ticks = music_transition_delay_ticks
 			simulation.music_fades++
 		}
-		simulation.zone_transition_ticks = 60
+		simulation.zone_transition_ticks = zone_transition_duration_ticks
 	}
 }
 
@@ -1228,7 +1242,7 @@ fn (mut simulation Simulation) install_next_zone() {
 	simulation.stage.start_next_zone(simulation.zone_specs.boss.len)
 	simulation.shape_random = shape_random_after_zone(simulation.zone_specs, u32(simulation.config.random_seed))
 	simulation.next_boss_spec = 0
-	simulation.palette_transition_ticks = 60
+	simulation.palette_transition_ticks = palette_transition_duration_ticks
 	simulation.next_small_distance = setup.next_small_distance
 	simulation.next_middle_distance = setup.next_middle_distance
 	simulation.next_boss_distance = 9_999_999
@@ -1437,37 +1451,37 @@ fn (mut simulation Simulation) update_weapon(input InputState) {
 				simulation.shots[index] = Shot{
 					alive: true
 					position: Vec2{
-						x: wrap_angle(simulation.ship.angle - simulation.ship.bank * 0.1)
-						y: simulation.ship.relative_depth + 0.3
+						x: wrap_angle(simulation.ship.angle - simulation.ship.bank * shot_bank_angle_ratio)
+						y: simulation.ship.relative_depth + shot_muzzle_depth_offset
 					}
 					charged: true
 					charging: true
-					damage: 100
+					damage:      charged_shot_damage
 					size: 0
 					target_size: 0
 				}
 				simulation.charging_shot = index
 			}
 		} else {
-			simulation.shots[simulation.charging_shot].position.x = wrap_angle(simulation.ship.angle - simulation.ship.bank * 0.1)
-			simulation.shots[simulation.charging_shot].position.y = simulation.ship.relative_depth + 0.3
+			simulation.shots[simulation.charging_shot].position.x = wrap_angle(simulation.ship.angle - simulation.ship.bank * shot_bank_angle_ratio)
+			simulation.shots[simulation.charging_shot].position.y = simulation.ship.relative_depth + shot_muzzle_depth_offset
 		}
 	} else if simulation.charging_shot >= 0 {
-		// Discard a charge released below 25% of its 90-tick maximum.
-		if simulation.shots[simulation.charging_shot].charge_ticks < 23 {
+		// Releasing before the minimum charge cancels the shot.
+		if simulation.shots[simulation.charging_shot].charge_ticks < charged_shot_min_ticks {
 			simulation.shots[simulation.charging_shot].alive = false
 		} else {
 			simulation.shots[simulation.charging_shot].charging = false
-			simulation.shots[simulation.charging_shot].range = (2 + f32(simulation.shots[simulation.charging_shot].charge_ticks) * 0.5) * simulation.config.player_shot_distance / source_player_shot_distance
-			simulation.shots[simulation.charging_shot].target_size = 0.1 + f32(simulation.shots[simulation.charging_shot].charge_ticks) * 0.15
+			simulation.shots[simulation.charging_shot].range = (charged_shot_base_range + f32(simulation.shots[simulation.charging_shot].charge_ticks) * charged_shot_range_per_tick) * simulation.config.player_shot_distance / source_player_shot_distance
+			simulation.shots[simulation.charging_shot].target_size = charged_shot_base_size + f32(simulation.shots[simulation.charging_shot].charge_ticks) * charged_shot_size_per_tick
 		}
 		simulation.charging_shot = -1
 	}
 	if input.fire && !input.brake && simulation.fire_cooldown <= 0 {
-		simulation.fire_cooldown = 2
-		mut gun_offset := f32(-0.05)
+		simulation.fire_cooldown = regular_shot_interval_ticks
+		mut gun_offset := -gun_lateral_angle
 		if simulation.fired_shots % 2 == 1 {
-			gun_offset = 0.05
+			gun_offset = gun_lateral_angle
 		}
 		index := simulation.next_shot_index(false)
 		if index >= 0 {
@@ -1475,17 +1489,17 @@ fn (mut simulation Simulation) update_weapon(input InputState) {
 				alive: true
 				position: Vec2{
 					x: wrap_angle(simulation.ship.angle + gun_offset)
-					y: simulation.ship.relative_depth + 0.3
+					y: simulation.ship.relative_depth + shot_muzzle_depth_offset
 				}
 				range: simulation.config.player_shot_distance
-				star_shell: simulation.fired_shots % 7 == 0
+				star_shell: simulation.fired_shots % star_shot_interval == 0
 			}
 			simulation.fired_shots++
 		}
 	}
-	if input.fire && !input.brake && simulation.ship.speed > rules.default_speed * 1.33
+	if input.fire && !input.brake && simulation.ship.speed > rules.default_speed * side_fire_speed_ratio
 		&& simulation.side_fire_cooldown <= 0 {
-		simulation.side_fire_cooldown = 99999
+		simulation.side_fire_cooldown = side_fire_idle_ticks
 		speed_range := rules.max_speed - rules.default_speed
 		side_angle := clamp_f32((simulation.ship.speed - rules.default_speed) / speed_range * 0.1, 0.01, 0.1)
 		mut direction := side_angle * f32(simulation.side_fired_shots % 5) * 0.2
@@ -1498,22 +1512,22 @@ fn (mut simulation Simulation) update_weapon(input InputState) {
 				alive: true
 				position: Vec2{
 					x: wrap_angle(simulation.ship.angle + if simulation.fired_shots % 2 == 0 {
-						f32(-0.05)
+						-gun_lateral_angle
 					} else {
-						f32(0.05)
+						gun_lateral_angle
 					})
-					y: simulation.ship.relative_depth + 0.3
+					y: simulation.ship.relative_depth + shot_muzzle_depth_offset
 				}
 				direction: direction
 				range: simulation.config.player_shot_distance
-				star_shell: simulation.side_fired_shots % 7 == 0
+				star_shell: simulation.side_fired_shots % star_shot_interval == 0
 			}
 			simulation.side_fired_shots++
 		}
 	}
-	mut side_interval := 99999
-	if simulation.ship.speed > rules.default_speed * 1.33 {
-		fire_density := (simulation.ship.speed - rules.default_speed * 1.33) * 99999.0 / (rules.max_speed - rules.default_speed) + 1.0
+	mut side_interval := side_fire_idle_ticks
+	if simulation.ship.speed > rules.default_speed * side_fire_speed_ratio {
+		fire_density := (simulation.ship.speed - rules.default_speed * side_fire_speed_ratio) * 99999.0 / (rules.max_speed - rules.default_speed) + 1.0
 		side_interval = int(100000.0 / fire_density)
 		if side_interval < 1 {
 			side_interval = 1
@@ -1553,10 +1567,10 @@ fn (mut simulation Simulation) update_shots() {
 	mut zones_completed := 0
 	for mut shot in simulation.shots {
 		if shot.alive && shot.charging {
-			if shot.charge_ticks < 90 {
+			if shot.charge_ticks < charged_shot_max_ticks {
 				shot.charge_ticks++
 			}
-			shot.target_size = (0.1 + f32(shot.charge_ticks) * 0.15) * 0.33
+			shot.target_size = (charged_shot_base_size + f32(shot.charge_ticks) * charged_shot_size_per_tick) * charging_shot_size_ratio
 			shot.age++
 		}
 	}
@@ -1651,7 +1665,7 @@ fn (mut simulation Simulation) update_shots() {
 				simulation.score_shot_hit(mut shot, enemy.score, enemy.position)
 			}
 		}
-		if shot.star_shell || shot.charge_ticks >= 23 {
+		if shot.star_shell || shot.charge_ticks >= charged_shot_min_ticks {
 			particle_count := if shot.charged { 3 } else { 1 }
 			for _ in 0 .. particle_count {
 				simulation.spawn_shot_trail_particle(shot.position, shot.charge_ticks)
@@ -1698,7 +1712,7 @@ fn (mut simulation Simulation) spawn_shot_trail_particle(position Vec2, charge_t
 	}
 	direction := simulation.shot_random.next_signed_f32(f32(math.pi) / 2) + f32(math.pi)
 	height_velocity := simulation.shot_random.next_signed_f32(0.5)
-	base_life := charge_ticks * 32 / 90 + 4
+	base_life := charge_ticks * 32 / charged_shot_max_ticks + 4
 	simulation.set_source_particle(index, position, direction, 1, height_velocity, 0.05, base_life, .spark, 1)
 }
 
@@ -1935,7 +1949,7 @@ fn (mut simulation Simulation) spawn_particles_scaled(position Vec2, count int, 
 }
 
 fn (mut simulation Simulation) spawn_ship_particles() {
-	if simulation.ship.lifecycle_counter >= -228 {
+	if simulation.ship.lifecycle_counter >= -ship_spawn_invulnerability_ticks {
 		simulation.spawn_jet_particle(0.02623)
 		simulation.spawn_jet_particle(-0.02623)
 	}
@@ -2155,20 +2169,20 @@ fn (mut simulation Simulation) update_ship(input InputState) {
 	rules := rules_for_grade(simulation.config.grade)
 	mut desired_speed := simulation.ship.target_speed
 	if input.brake {
-		desired_speed *= 0.5
+		desired_speed *= charge_brake_speed_ratio
 	} else {
-		regenerated_speed := simulation.ship.regenerative_charge * 0.1
+		regenerated_speed := simulation.ship.regenerative_charge * regenerative_release_ratio
 		simulation.ship.speed += regenerated_speed
 		desired_speed += regenerated_speed
 		simulation.ship.regenerative_charge -= regenerated_speed
 	}
 	if simulation.ship.speed < desired_speed {
-		simulation.ship.speed += (desired_speed - simulation.ship.speed) * 0.015
+		simulation.ship.speed += (desired_speed - simulation.ship.speed) * ship_acceleration_response
 	} else {
 		if input.brake {
-			simulation.ship.regenerative_charge -= (desired_speed - simulation.ship.speed) * 0.05
+			simulation.ship.regenerative_charge -= (desired_speed - simulation.ship.speed) * regenerative_capture_ratio
 		}
-		simulation.ship.speed += (desired_speed - simulation.ship.speed) * 0.05
+		simulation.ship.speed += (desired_speed - simulation.ship.speed) * ship_deceleration_response
 	}
 	previous_whole_distance := int(simulation.ship.distance)
 	simulation.ship.distance += simulation.ship.speed
@@ -2182,10 +2196,10 @@ fn (mut simulation Simulation) update_ship(input InputState) {
 		simulation.ship.lap++
 	}
 	if input.right {
-		simulation.ship.bank += (-rules.bank_max - simulation.ship.bank) * 0.1
+		simulation.ship.bank += (-rules.bank_max - simulation.ship.bank) * ship_bank_response
 	}
 	if input.left {
-		simulation.ship.bank += (rules.bank_max - simulation.ship.bank) * 0.1
+		simulation.ship.bank += (rules.bank_max - simulation.ship.bank) * ship_bank_response
 	}
 	mut over_accelerating := false
 	if input.up {
@@ -2204,22 +2218,22 @@ fn (mut simulation Simulation) update_ship(input InputState) {
 	// below the source default speed or shortening the source sight range.
 	forward_depth := f32_max(simulation.ship.relative_depth, 0)
 	acceleration_speed := forward_depth * (rules.max_speed - rules.default_speed) / relative_depth_max + rules.default_speed
-	simulation.ship.sight_depth = 35 * (1 + forward_depth / relative_depth_max)
+	simulation.ship.sight_depth = ship_base_sight_depth * (1 + forward_depth / relative_depth_max)
 	if simulation.ship.speed > rules.max_speed {
-		simulation.ship.sight_depth += 35 * (simulation.ship.speed - rules.max_speed) / rules.max_speed * 3
+		simulation.ship.sight_depth += ship_base_sight_depth * (simulation.ship.speed - rules.max_speed) / rules.max_speed * 3
 	}
 	if over_accelerating {
-		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * 0.001
+		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * overdrive_target_response
 	} else if simulation.ship.target_speed < acceleration_speed {
-		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * 0.005
+		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * speed_target_rise_response
 	} else {
-		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * 0.03
+		simulation.ship.target_speed += (acceleration_speed - simulation.ship.target_speed) * speed_target_fall_response
 	}
-	simulation.ship.bank *= 0.9
+	simulation.ship.bank *= ship_bank_retention
 	ship_slice := simulation.course.slice_at(simulation.ship.course_position + simulation.ship.relative_depth)
 	radius_scale := if ship_slice.rad > 0 { 21 / ship_slice.rad } else { f32(1) }
-	simulation.ship.angle = wrap_angle(simulation.ship.angle + simulation.ship.bank * 0.08 * radius_scale)
-	simulation.ship.eye_angle = wrap_angle(simulation.ship.eye_angle + angle_delta(simulation.ship.eye_angle, simulation.ship.angle) * 0.1)
+	simulation.ship.angle = wrap_angle(simulation.ship.angle + simulation.ship.bank * ship_turn_rate * radius_scale)
+	simulation.ship.eye_angle = wrap_angle(simulation.ship.eye_angle + angle_delta(simulation.ship.eye_angle, simulation.ship.angle) * camera_angle_response)
 	if simulation.ship.screen_shake_ticks > 0 {
 		simulation.ship.screen_shake_ticks--
 	}
@@ -2367,24 +2381,24 @@ fn (mut simulation Simulation) destroy_ship() {
 		return
 	}
 	simulation.ship.hits++
-	simulation.ship.lifecycle_counter = -268
-	simulation.ship.invulnerable_ticks = 268
+	simulation.ship.lifecycle_counter = -ship_respawn_protection_ticks
+	simulation.ship.invulnerable_ticks = ship_respawn_protection_ticks
 	simulation.ship.target_speed = 0
 	simulation.ship.regenerative_charge = 0
-	simulation.ship.screen_shake_ticks = 32
-	simulation.ship.screen_shake_intensity = 0.05
+	simulation.ship.screen_shake_ticks = ship_hit_shake_ticks
+	simulation.ship.screen_shake_intensity = ship_hit_shake_intensity
 	simulation.spawn_ship_destruction_particles(Vec2{
 		x: simulation.ship.angle
 		y: simulation.ship.relative_depth
 	})
 	simulation.fire_cooldown = 0
-	simulation.side_fire_cooldown = 99_999
+	simulation.side_fire_cooldown = side_fire_idle_ticks
 	if simulation.charging_shot >= 0 {
 		simulation.shots[simulation.charging_shot].alive = false
 		simulation.charging_shot = -1
 	}
 	if simulation.config.run_time_ms > 0 {
-		simulation.change_time(-15)
+		simulation.change_time(-collision_penalty_seconds)
 	}
 }
 

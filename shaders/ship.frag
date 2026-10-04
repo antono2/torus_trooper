@@ -1,4 +1,6 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
 
 layout(location = 0) in vec4 ship_color;
 layout(location = 1) flat in float enemy_hull;
@@ -44,8 +46,8 @@ void main() {
               * (1.0 - smoothstep(1.5, 2.3, pixel_edge));
     // Both light and dark regions are present regardless of panel visibility.
     // Keep semantic colors stable; only panel markings change between zones.
-    vec3 dark = hostile ? vec3(0.055, 0.008, 0.085) : vec3(0.008, 0.045, 0.065);
-    vec3 trim = hostile ? vec3(1.0, 0.36, 0.12) : vec3(0.30, 0.95, 1.0);
+    vec3 dark = hostile ? color_enemy_hull_dark_plum : color_player_hull_dark_teal;
+    vec3 trim = hostile ? color_enemy_trim_orange : color_player_trim_cyan;
     vec3 body = mix(dark, ship_color.rgb, hostile ? 0.38 : 0.42);
     vec3 material = mix(body, trim, max(band * detail * 0.85, rim * detail * 0.70));
     material = mix(material, dark, seam * detail);

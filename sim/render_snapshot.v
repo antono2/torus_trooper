@@ -359,7 +359,7 @@ pub fn (simulation &Simulation) render_entity_soa_for_camera_with_scales(camera_
 		rotation_ws: []f32{cap: 1024}
 	}
 	player_clearance := player_ship_surface_clearance(scales.player)
-	ship_hidden := simulation.ship.lifecycle_counter < -228
+	ship_hidden := simulation.ship.lifecycle_counter < -ship_spawn_invulnerability_ticks
 		|| (simulation.ship.lifecycle_counter < 0
 			&& (-simulation.ship.lifecycle_counter % 32) < 16)
 	if !ship_hidden {

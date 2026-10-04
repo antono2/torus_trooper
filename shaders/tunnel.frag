@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
+#include "hud_state.h"
 
 layout(location = 0) in float brightness;
 layout(location = 1) in float camera_depth;
@@ -12,7 +15,6 @@ layout(push_constant) uniform FrameColor {
     layout(offset = 64) float transition_fade;
 } frame;
 
-const int title_state = 4;
 const float camera_near_depth = 0.0;
 
 void main() {
@@ -21,17 +23,17 @@ void main() {
     if (brightness <= 0.0) discard;
     // Clip replay geometry at the camera itself. This rejects course vertices
     // behind the eye without removing the track beneath the replay ship.
-    if ((frame.state & title_state) != 0 && camera_depth <= camera_near_depth) discard;
+    if ((frame.state & TT_HUD_TITLE) != 0 && camera_depth <= camera_near_depth) discard;
     vec4 line_color = vec4(frame.tunnel_color.rgb, 1.0);
     float line_brightness = brightness;
     if (brightness >= 6.0) {
-        line_color = vec4(1.0, 1.0, 0.6, 1.0);
+        line_color = vec4(color_border_pale_yellow, 1.0);
         line_brightness -= 6.0;
     } else if (brightness >= 4.0) {
-        line_color = vec4(1.0, 0.9, 0.5, 1.0);
+        line_color = vec4(color_final_ring_gold, 1.0);
         line_brightness -= 4.0;
     } else if (brightness >= 2.0) {
-        line_color = vec4(0.5, 1.0, 0.9, 1.0);
+        line_color = vec4(color_normal_ring_mint, 1.0);
         line_brightness -= 2.0;
     }
     float display = line_brightness * frame.display_brightness * (1.0 - frame.transition_fade);

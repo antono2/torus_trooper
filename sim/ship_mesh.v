@@ -224,19 +224,6 @@ fn player_ship_depth_clearance(scale f32) f32 {
 	return (f32_max(scale, 1) - 1) * f32(1.35) / source_tunnel_slice_depth
 }
 
-fn ship_structure_color(index int) TunnelColor {
-	return match int_max(0, int_min(7, index)) {
-		0 { TunnelColor{ r: 1, g: 1, b: 1 } }
-		1 { TunnelColor{ r: 0.5, g: 0.5, b: 0.5 } }
-		2 { TunnelColor{ r: 0.95, g: 0.16, b: 0.12 } }
-		3 { TunnelColor{ r: 0.18, g: 0.82, b: 0.28 } }
-		4 { TunnelColor{ r: 0.18, g: 0.4, b: 1 } }
-		5 { TunnelColor{ r: 0.95, g: 0.7, b: 0.12 } }
-		6 { TunnelColor{ r: 0.85, g: 0.2, b: 0.9 } }
-		else { TunnelColor{ r: 0.08, g: 0.72, b: 0.95 } }
-	}
-}
-
 fn actor_ship_vertex(frame ShipMeshFrame, model ShipMeshVec3, scale f32) ShipMeshVec3 {
 	radial_scale := course_render_height_scale * scale
 	longitudinal_scale := course_render_longitudinal_scale * scale
@@ -244,7 +231,7 @@ fn actor_ship_vertex(frame ShipMeshFrame, model ShipMeshVec3, scale f32) ShipMes
 }
 
 fn append_ship_triangle(mut vertices []CourseFillVertex, frame ShipMeshFrame,
-	a ShipMeshVec3, b ShipMeshVec3, c ShipMeshVec3, scale f32, color TunnelColor,
+	a ShipMeshVec3, b ShipMeshVec3, c ShipMeshVec3, scale f32, color RgbColor,
 	alpha f32) {
 	world_a := actor_ship_vertex(frame, a, scale)
 	world_b := actor_ship_vertex(frame, b, scale)
@@ -267,7 +254,7 @@ fn append_ship_triangle(mut vertices []CourseFillVertex, frame ShipMeshFrame,
 
 fn append_ship_quad(mut vertices []CourseFillVertex, frame ShipMeshFrame,
 	a ShipMeshVec3, b ShipMeshVec3, c ShipMeshVec3, d ShipMeshVec3, scale f32,
-	color TunnelColor, alpha f32) {
+	color RgbColor, alpha f32) {
 	append_ship_triangle(mut vertices, frame, a, b, c, scale, color, alpha)
 	append_ship_triangle(mut vertices, frame, a, c, d, scale, color, alpha)
 }
@@ -280,30 +267,30 @@ struct ShipHullSection {
 	half_height f32
 }
 
-fn brighter_ship_color(color TunnelColor, amount f32) TunnelColor {
-	return TunnelColor{
+fn brighter_ship_color(color RgbColor, amount f32) RgbColor {
+	return RgbColor{
 		r: color.r + (1 - color.r) * amount
 		g: color.g + (1 - color.g) * amount
 		b: color.b + (1 - color.b) * amount
 	}
 }
 
-fn darker_ship_color(color TunnelColor, amount f32) TunnelColor {
-	return TunnelColor{
+fn darker_ship_color(color RgbColor, amount f32) RgbColor {
+	return RgbColor{
 		r: color.r * (1 - amount)
 		g: color.g * (1 - amount)
 		b: color.b * (1 - amount)
 	}
 }
 
-fn ship_nose_color(color TunnelColor) TunnelColor {
+fn ship_nose_color(color RgbColor) RgbColor {
 	// Lift the nose/canopy enough to reveal the shape without replacing the
 	// ship's seeded hue with the former near-white cyan accent.
 	return brighter_ship_color(color, 0.12)
 }
 
-fn ship_exhaust_color(color TunnelColor) TunnelColor {
-	return TunnelColor{
+fn ship_exhaust_color(color RgbColor) RgbColor {
+	return RgbColor{
 		r: color.r * 0.2 + 0.72
 		g: color.g * 0.12 + 0.12
 		b: color.b * 0.12 + 0.08
@@ -320,7 +307,7 @@ fn hull_section_corners(section ShipHullSection) []ShipMeshVec3 {
 }
 
 fn append_tapered_hull(mut vertices []CourseFillVertex, frame ShipMeshFrame,
-	sections []ShipHullSection, scale f32, color TunnelColor, alpha f32) {
+	sections []ShipHullSection, scale f32, color RgbColor, alpha f32) {
 	if sections.len < 2 {
 		return
 	}
@@ -342,7 +329,7 @@ fn append_tapered_hull(mut vertices []CourseFillVertex, frame ShipMeshFrame,
 // it reads as a smooth, rounded fuselage while retaining inexpensive flat
 // faces and enough highlights to make its volume visible.
 fn append_round_hull(mut vertices []CourseFillVertex, frame ShipMeshFrame,
-	sections []ShipHullSection, scale f32, color TunnelColor, alpha f32) {
+	sections []ShipHullSection, scale f32, color RgbColor, alpha f32) {
 	if sections.len < 2 {
 		return
 	}
@@ -385,7 +372,7 @@ fn append_round_hull(mut vertices []CourseFillVertex, frame ShipMeshFrame,
 
 fn append_hull_wing(mut vertices []CourseFillVertex, frame ShipMeshFrame, side f32,
 	root_width f32, span f32, front_z f32, tip_z f32, rear_z f32, thickness f32,
-	scale f32, color TunnelColor, alpha f32) {
+	scale f32, color RgbColor, alpha f32) {
 	root_front := ShipMeshVec3{ x: side * root_width, y: 0, z: front_z }
 	tip := ShipMeshVec3{ x: side * span, y: 0, z: tip_z }
 	root_rear := ShipMeshVec3{ x: side * root_width, y: 0, z: rear_z }
@@ -405,7 +392,7 @@ fn append_hull_wing(mut vertices []CourseFillVertex, frame ShipMeshFrame, side f
 }
 
 fn append_boss_radial_spike(mut vertices []CourseFillVertex, frame ShipMeshFrame,
-	angle f32, scale f32, color TunnelColor, alpha f32) {
+	angle f32, scale f32, color RgbColor, alpha f32) {
 	radial := ShipMeshVec3{ x: f32(math.cos(angle)), y: f32(math.sin(angle)) }
 	tangent := ShipMeshVec3{ x: -radial.y, y: radial.x }
 	center := radial.multiply(0.58).add(ShipMeshVec3{ z: -0.15 })
@@ -540,7 +527,7 @@ fn append_readable_ship_hull(mut vertices []CourseFillVertex, frame ShipMeshFram
 }
 
 fn append_panel_volume(mut vertices []CourseFillVertex, frame ShipMeshFrame,
-	structure ShipStructureGeometry, points []ShipMeshVec3, scale f32, color TunnelColor,
+	structure ShipStructureGeometry, points []ShipMeshVec3, scale f32, color RgbColor,
 	alpha f32) {
 	if points.len != 4 {
 		return
@@ -719,7 +706,7 @@ fn append_custom_ship_model(mut vertices []CourseFillVertex, frame ShipMeshFrame
 pub fn (simulation &Simulation) render_ship_mesh_vertices_for_camera(camera_angle f32,
 	scales RenderScales) []CourseFillVertex {
 	mut vertices := []CourseFillVertex{cap: 16_384}
-	ship_hidden := simulation.ship.lifecycle_counter < -228
+	ship_hidden := simulation.ship.lifecycle_counter < -ship_spawn_invulnerability_ticks
 		|| (simulation.ship.lifecycle_counter < 0
 			&& (-simulation.ship.lifecycle_counter % 32) < 16)
 	if !ship_hidden {

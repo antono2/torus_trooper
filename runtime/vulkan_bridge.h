@@ -13,6 +13,7 @@
 #include <math.h>
 #include <stddef.h>
 #include <ctype.h>
+#include "../shaders/hud_state.h"
 
 #define TT_MAX_DEVICES 16
 #define TT_FRAMES_IN_FLIGHT 2
@@ -52,6 +53,13 @@
      7 * 7 * 5 * 6 + TT_HUD_HELP_VERTEX_COUNT + TT_HUD_MENU_SELECTION_VERTEX_COUNT)
 #define TT_HUD_HELP_VERTEX_OFFSET \
     (TT_HUD_VERTEX_COUNT - TT_HUD_MENU_SELECTION_VERTEX_COUNT - TT_HUD_HELP_VERTEX_COUNT)
+
+// Opaque clears, in normalized RGBA. Keep the background in sync with
+// color_background_navy in shaders/palette.glsl so the near fade meets it.
+static const VkClearValue tt_background_navy = {.color = {{0.008f, 0.012f, 0.03f, 1.0f}}};
+static const VkClearValue tt_opaque_black = {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}};
+static const VkClearValue tt_loading_bar_slate = {.color = {{0.08f, 0.12f, 0.18f, 1.0f}}};
+static const VkClearValue tt_loading_progress_cyan = {.color = {{0.22f, 0.82f, 1.0f, 1.0f}}};
 
 typedef struct TTDeviceInfo {
     char name[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
@@ -707,6 +715,8 @@ static void tt_glfw_error_callback(int code, const char *description) {
              description ? description : "unknown error");
 }
 
+// Action indices are also bit positions in the mask returned to V.
+// The first six positions match the saved replay format in sim/replay.v.
 enum TTInputAction {
     TT_ACTION_LEFT,
     TT_ACTION_RIGHT,
@@ -887,7 +897,7 @@ static void tt_platform_set_status(TTPlatform *platform, int score,
     platform->hud_remaining_time_ms = remaining_time_ms;
     platform->hud_hits = hits;
     platform->hud_zone = zone;
-    platform->hud_state = (paused ? 1 : 0) | (game_over ? 2 : 0);
+    platform->hud_state = (paused ? TT_HUD_PAUSED : 0) | (game_over ? TT_HUD_GAME_OVER : 0);
     platform->hud_speed = speed;
     platform->hud_rank = rank;
     platform->hud_rank_remaining = rank_remaining;
@@ -942,8 +952,9 @@ static void tt_platform_set_title_status(TTPlatform *platform, int grade, int le
     platform->hud_remaining_time_ms = active_menu_item;
     platform->hud_hits = level;
     platform->hud_zone = grade + 1;
-    platform->hud_state = 4 | (has_replay ? 8 : 0) | (god_mode ? 16 : 0) |
-                          (settings_open ? 64 : 0);
+    platform->hud_state = TT_HUD_TITLE | (has_replay ? TT_HUD_HAS_REPLAY : 0) |
+                          (god_mode ? TT_HUD_GOD_MODE : 0) |
+                          (settings_open ? TT_HUD_SETTINGS : 0);
     platform->hud_speed = max_level;
     platform->hud_rank = high_score_start_level;
     platform->hud_rank_remaining = settings_open ? fps_limit : high_score_end_level;
@@ -2048,7 +2059,7 @@ static bool tt_platform_set_loading_progress(TTPlatform *platform, float progres
         tt_set_vk_error("loading command begin", result);
         return false;
     }
-    VkClearValue background = {.color = {{0.008f, 0.012f, 0.03f, 1.0f}}};
+    VkClearValue background = tt_background_navy;
     VkRenderPassBeginInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = platform->loading_render_pass,
@@ -2071,7 +2082,7 @@ static bool tt_platform_set_loading_progress(TTPlatform *platform, float progres
     VkClearAttachment bar = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
         .colorAttachment = 0,
-        .clearValue = {.color = {{0.08f, 0.12f, 0.18f, 1.0f}}},
+        .clearValue = tt_loading_bar_slate,
     };
     VkClearRect rect = {
         .rect = {{(int32_t)bar_x, (int32_t)bar_y}, {bar_width, bar_height}},
@@ -2081,9 +2092,7 @@ static bool tt_platform_set_loading_progress(TTPlatform *platform, float progres
     vkCmdClearAttachments(command, 1, &bar, 1, &rect);
     uint32_t filled_width = (uint32_t)((float)bar_width * progress);
     if (filled_width > 0) {
-        bar.clearValue.color.float32[0] = 0.22f;
-        bar.clearValue.color.float32[1] = 0.82f;
-        bar.clearValue.color.float32[2] = 1.00f;
+        bar.clearValue = tt_loading_progress_cyan;
         rect.rect.extent.width = filled_width;
         vkCmdClearAttachments(command, 1, &bar, 1, &rect);
     }
@@ -2816,7 +2825,7 @@ static int tt_pack_title_pair(int first, int second) {
 
 static int tt_title_rank_remaining_value(int hud_state, int settings_value,
                                          int extreme_high_score) {
-    return (hud_state & 64) != 0 ? settings_value : extreme_high_score;
+    return (hud_state & TT_HUD_SETTINGS) != 0 ? settings_value : extreme_high_score;
 }
 
 static void tt_store_int_bits(float *destination, int value) {
@@ -2838,7 +2847,7 @@ static void tt_draw_hud_text_ranges(VkCommandBuffer command) {
 static void tt_draw_replay_library(TTPlatform *platform, VkCommandBuffer command,
                                    float aspect) {
     TTPushConstants push = {0};
-    push.state = 128;
+    push.state = TT_HUD_REPLAY_LIBRARY;
     push.aspect = aspect;
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, platform->hud_pipeline);
     vkCmdPushConstants(command, platform->pipeline_layout,
@@ -2905,9 +2914,9 @@ static bool tt_draw_frame(TTPlatform *platform) {
         return false;
     }
     VkClearValue clears[3] = {
-        {.color = {{0.008f, 0.012f, 0.03f, 1.0f}}},
+        tt_background_navy,
         {.depthStencil = {1.0f, 0}},
-        {.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
+        tt_opaque_black,
     };
     VkRenderPassBeginInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -2931,13 +2940,14 @@ static bool tt_draw_frame(TTPlatform *platform) {
     vkCmdSetViewport(command, 0, 1, &viewport);
     vkCmdSetScissor(command, 0, 1, &scissor);
     int packed_fps = platform->display_fps < 0 ? 0
-                   : platform->display_fps > 999 ? 999 : platform->display_fps;
+                   : platform->display_fps > TT_HUD_FPS_MAX_DISPLAY
+                       ? TT_HUD_FPS_MAX_DISPLAY : platform->display_fps;
     int display_hud_state = platform->hud_state |
-                            (platform->fps_visible ? 256 : 0) |
-                            (packed_fps << 10);
-    if ((display_hud_state & 1) != 0 &&
+                            (platform->fps_visible ? TT_HUD_FPS_VISIBLE : 0) |
+                            (packed_fps << TT_HUD_FPS_SHIFT);
+    if ((display_hud_state & TT_HUD_PAUSED) != 0 &&
         tt_pause_overlay_visible(glfwGetTime()))
-        display_hud_state |= 32;
+        display_hud_state |= TT_HUD_PAUSE_OVERLAY;
     TTPushConstants push = {
         (float)((platform->paused ? platform->paused_time : glfwGetTime()) - platform->start_time),
         (float)platform->swapchain_extent.width / (float)platform->swapchain_extent.height,
@@ -3032,9 +3042,7 @@ static bool tt_draw_frame(TTPlatform *platform) {
     }
     vkCmdEndRenderPass(command);
 
-    VkClearValue post_clear = {
-        .color = {{0.008f, 0.012f, 0.03f, 1.0f}},
-    };
+    VkClearValue post_clear = tt_background_navy;
     VkRenderPassBeginInfo post_render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = platform->post_render_pass,
@@ -3072,7 +3080,7 @@ static bool tt_draw_frame(TTPlatform *platform) {
                   (float)platform->swapchain_extent.height,
         .near_blur = platform->near_camera_blur,
         .ship_radius = post_ship_radius,
-        .enabled = (platform->hud_state & 4) == 0 ? 1.0f : 0.0f,
+        .enabled = (platform->hud_state & TT_HUD_TITLE) == 0 ? 1.0f : 0.0f,
         .near_fade = platform->near_camera_fade,
     };
     vkCmdPushConstants(command, platform->post_pipeline_layout,
@@ -3096,7 +3104,7 @@ static bool tt_draw_frame(TTPlatform *platform) {
     if (platform->hud_visible && !platform->replay_library_open) {
         TTPushConstants hud_push = push;
         hud_push.luminosity = (float)platform->swapchain_extent.height;
-        if ((platform->hud_state & 4) != 0) {
+        if ((platform->hud_state & TT_HUD_TITLE) != 0) {
             hud_push.score = platform->title_high_scores[0];
             hud_push.rank = platform->title_high_scores[1];
             /* The settings overlay reuses rank_remaining for its FPS value. */
@@ -3120,7 +3128,7 @@ static bool tt_draw_frame(TTPlatform *platform) {
                 platform->title_high_score_start_levels[2],
                 platform->title_high_score_end_levels[2]);
             tt_store_int_bits(&hud_push.camera_depth_offset,
-                              (platform->hud_state & 64) != 0
+                              (platform->hud_state & TT_HUD_SETTINGS) != 0
                                   ? platform->title_player_shot_distance
                                   : normal_range);
             tt_store_int_bits(&hud_push.camera_zoom, hard_range);
@@ -3868,20 +3876,20 @@ static uint32_t tt_platform_input(TTPlatform *platform) {
     uint32_t input = 0;
     bool volume_down = tt_action_pressed(platform, TT_ACTION_VOLUME_DOWN);
     bool volume_up = tt_action_pressed(platform, TT_ACTION_VOLUME_UP);
-    if (tt_action_pressed(platform, TT_ACTION_BACK)) input |= 256;
-    if (volume_down) input |= 512;
-    if (volume_up) input |= 1024;
-    if (tt_action_pressed(platform, TT_ACTION_LEFT)) input |= 1;
-    if (tt_action_pressed(platform, TT_ACTION_RIGHT)) input |= 2;
-    if (tt_action_pressed(platform, TT_ACTION_UP)) input |= 4;
-    if (tt_action_pressed(platform, TT_ACTION_DOWN)) input |= 8;
-    if (tt_action_pressed(platform, TT_ACTION_FIRE)) input |= 16;
+    if (tt_action_pressed(platform, TT_ACTION_BACK)) input |= 1u << TT_ACTION_BACK;
+    if (volume_down) input |= 1u << TT_ACTION_VOLUME_DOWN;
+    if (volume_up) input |= 1u << TT_ACTION_VOLUME_UP;
+    if (tt_action_pressed(platform, TT_ACTION_LEFT)) input |= 1u << TT_ACTION_LEFT;
+    if (tt_action_pressed(platform, TT_ACTION_RIGHT)) input |= 1u << TT_ACTION_RIGHT;
+    if (tt_action_pressed(platform, TT_ACTION_UP)) input |= 1u << TT_ACTION_UP;
+    if (tt_action_pressed(platform, TT_ACTION_DOWN)) input |= 1u << TT_ACTION_DOWN;
+    if (tt_action_pressed(platform, TT_ACTION_FIRE)) input |= 1u << TT_ACTION_FIRE;
     bool charge = tt_action_pressed(platform, TT_ACTION_CHARGE);
     if (volume_up && !tt_action_pressed_except_shifts(platform, TT_ACTION_CHARGE))
         charge = false;
-    if (charge) input |= 32;
-    if (tt_action_pressed(platform, TT_ACTION_PAUSE)) input |= 64;
-    if (tt_action_pressed(platform, TT_ACTION_RESTART)) input |= 128;
+    if (charge) input |= 1u << TT_ACTION_CHARGE;
+    if (tt_action_pressed(platform, TT_ACTION_PAUSE)) input |= 1u << TT_ACTION_PAUSE;
+    if (tt_action_pressed(platform, TT_ACTION_RESTART)) input |= 1u << TT_ACTION_RESTART;
     return input;
 }
 

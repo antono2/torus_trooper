@@ -1,4 +1,15 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
+
+// Animate one color channel without changing the base hue elsewhere.
+vec3 add_green_glow(vec3 base, float amount) {
+    return vec3(base.r, base.g + amount, base.b);
+}
+
+vec3 add_red_glow(vec3 base, float amount) {
+    return vec3(base.r + amount, base.g, base.b);
+}
 
 layout(location = 0) in vec2 local_position;
 layout(location = 1) flat in float instance_kind;
@@ -284,7 +295,7 @@ void main() {
 		bool shadow = calibration_label_glyph(p + vec2(step_size.x, 0.0), label)
 			|| calibration_label_glyph(p + vec2(0.0, step_size.y), label);
 		if (!core && !shadow) discard;
-		vec3 label_color = core ? vec3(0.80, 0.96, 1.0) : vec3(0.01, 0.02, 0.04);
+		vec3 label_color = core ? color_calibration_label_ice_blue : color_calibration_label_ink;
 		color = vec4(label_color * (1.0 - display.transition_fade), 1.0);
 		return;
 	}
@@ -317,19 +328,19 @@ void main() {
 
     if (instance_kind < 0.5) {
         visible = radius < 0.82;
-        selected = vec3(1.0, 0.30 + glow * 0.62, 0.08);
+        selected = add_green_glow(color_exhaust_orange, glow * exhaust_orange_glow_amplitude);
     } else if (instance_kind < 1.5) {
         visible = player_ship(p);
-        selected = vec3(0.42, 0.86 + glow * 0.14, 0.88);
+        selected = add_green_glow(color_player_aqua, glow * player_aqua_glow_amplitude);
     } else if (instance_kind < 2.5) {
         float field = radial_blade_field(p, 4.0);
         float aa = max(fwidth(field), 0.002);
         shape_alpha = 1.0 - smoothstep(-aa, aa, field);
         visible = shape_alpha > 0.0;
         float core = 1.0 - smoothstep(-0.14 - aa, -0.14 + aa, field);
-        vec3 hot = instance_kind >= 2.2 ? vec3(1.0, 0.94, 0.42)
-                                       : vec3(0.62, 1.0, 0.86);
-        selected = mix(vec3(0.015, 0.035, 0.065), hot, core);
+        vec3 hot = instance_kind >= 2.2 ? color_shot_gold
+                                       : color_shot_mint;
+        selected = mix(color_shot_outline_navy, hot, core);
     } else if (instance_kind < 3.5) {
         uint enemy_tier = uint(clamp(floor((instance_kind - 3.0) /
                                            enemy_shape_tier_stride + 0.001),
@@ -341,12 +352,12 @@ void main() {
         uint shape_seed = packed_shape % enemy_damaged_code_offset;
         visible = enemy_ship(p, enemy_tier, shape_seed);
         float tint = shape_value(shape_seed, 5u);
-        selected = enemy_damaged ? vec3(1.0)
-            : mix(vec3(0.72, 0.015, 0.16), vec3(0.12, 0.025, 0.68), tint * 0.42);
+        selected = enemy_damaged ? color_white
+            : mix(color_enemy_crimson, color_enemy_indigo, tint * 0.42);
     } else if (instance_kind < 4.9) {
         visible = boss_bit(p);
-        selected = radius > 0.68 ? vec3(0.10, 0.01, 0.18)
-                                 : vec3(1.0, 0.30 + glow * 0.20, 0.02);
+        selected = radius > 0.68 ? color_boss_bit_outline_plum
+                                 : add_green_glow(color_boss_bit_orange, glow * boss_bit_orange_glow_amplitude);
 	} else if (instance_kind < 5.5) {
 		float surface_light;
         float field = charged_weapon_field(p, surface_light);
@@ -354,11 +365,11 @@ void main() {
         shape_alpha = 1.0 - smoothstep(-aa, aa, field);
         visible = shape_alpha > 0.0;
         float core = 1.0 - smoothstep(-0.020 - aa, -0.020 + aa, field);
-        selected = mix(vec3(0.015, 0.035, 0.065),
-                       vec3(0.62, 1.0, 0.86) * mix(0.65, 1.0, surface_light), core);
+        selected = mix(color_shot_outline_navy,
+                       color_shot_mint * mix(0.65, 1.0, surface_light), core);
 	} else if (instance_kind > 62.5) {
 		visible = abs(radius - 0.94) < 0.035;
-		selected = vec3(0.55, 0.95, 1.0);
+		selected = color_calibration_tunnel_cyan;
 	} else if (instance_kind >= 7.0) {
 		int bullet_shape = int(floor(instance_kind - 7.0 + 0.01));
 		bool wire = (bullet_shape & 1) != 0;
@@ -382,8 +393,8 @@ void main() {
         visible = shape_alpha > 0.0;
         float core_distance = wire ? edge_distance - 0.065 : field + 0.12;
         float core = 1.0 - smoothstep(-aa, aa, core_distance);
-        selected = mix(vec3(0.09, 0.005, 0.16),
-                       vec3(1.0, 0.20 + glow * 0.24, 0.015), core);
+        selected = mix(color_bullet_outline_plum,
+                       add_green_glow(color_bullet_orange, glow * bullet_orange_glow_amplitude), core);
 	} else {
 		float particle_code = instance_kind - 6.0;
 		float particle_variant = floor(particle_code / 0.25 + 0.001);
@@ -395,26 +406,26 @@ void main() {
 			float width = mix(0.30, 0.055, clamp((p.y + 0.92) / 1.55, 0.0, 1.0));
 			visible = p.y > -0.92 && p.y < 0.68 && abs(p.x) < width;
 			output_alpha = 0.5 * clamp((0.68 - p.y) / 1.60, 0.0, 1.0);
-			selected = particle_tier >= 0.5 ? vec3(0.60, 1.0, 0.80)
-			                                     : vec3(1.0, 0.50 + glow * 0.48, 0.04);
+			selected = particle_tier >= 0.5 ? color_spark_mint
+			                                     : add_green_glow(color_spark_yellow, glow * spark_yellow_glow_amplitude);
 		} else if (particle_variant < 1.5) {
 			float width = mix(0.34, 0.045, clamp((p.y + 0.96) / 1.76, 0.0, 1.0));
 			visible = p.y > -0.96 && p.y < 0.80 && abs(p.x) < width;
 			// The nozzle-facing tip is bright and the widening tail fades, matching
 			// the source spark whose previous position is the opaque endpoint.
 			output_alpha = 0.5 * clamp((p.y + 0.96) / 1.76, 0.0, 1.0);
-			selected = particle_tier >= 0.5 ? vec3(0.30, 0.40, 1.0)
-			                                     : vec3(0.90, 0.50 + glow * 0.20, 1.0);
+			selected = particle_tier >= 0.5 ? color_jet_blue
+			                                     : add_green_glow(color_jet_lilac, glow * jet_lilac_glow_amplitude);
 		} else if (particle_variant < 2.5) {
 			visible = abs(p.x) < 0.10 && p.y > -0.96 && p.y < 0.88;
 			output_alpha = mix(1.0, 0.2, clamp((p.y + 0.96) / 1.84, 0.0, 1.0));
-			selected = vec3(0.75 + glow * 0.25, 0.82, 1.0);
+			selected = add_red_glow(color_star_ice_blue, glow * star_ice_blue_glow_amplitude);
 		} else {
 			float edge = max(abs(p.x), abs(p.y));
 			visible = edge < 1.0;
 			output_alpha = edge > 0.78 ? 0.5 : 0.2;
-			selected = edge > 0.78 ? vec3(1.0, 0.52, 0.30)
-			                       : vec3(0.62 + glow * 0.20, 0.16, 0.10);
+			selected = edge > 0.78 ? color_fragment_edge_coral
+			                       : add_red_glow(color_fragment_rust, glow * fragment_rust_glow_amplitude);
 		}
     }
 
@@ -428,7 +439,7 @@ void main() {
 	if (calibration_mesh_proxy && !selection_border) discard;
 	if (!visible && !selection_border) discard;
 	if (selection_border) {
-		color = vec4(vec3(0.30, 1.0, 0.92) * (display.brightness + display.luminosity),
+		color = vec4(color_selection_mint * (display.brightness + display.luminosity),
 			1.0);
 		return;
 	}

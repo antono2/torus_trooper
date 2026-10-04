@@ -486,7 +486,6 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	mut replay_hud_visible := true
 	mut replay_camera := sim.new_replay_camera(u32(simulation.config.random_seed))
 	mut replay_camera_toggle_pressed := false
-	mut replay_change_frames := 0
 	mut recorded_inputs := []u8{}
 	mut suspended_run := SuspendedRun{}
 	mut last_replay := if player_data.replay.valid {
@@ -506,8 +505,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	mut title_key_repeat := 0
 	mut settings_adjust_pending := 0
 	mut action_pressed := true
-	mut transition_frames := menu_transition_frames
-	mut game_over_frames := 0
+	mut presentation_timers := PresentationTimers{}
 	mut replay_game_over_ticks := 0
 	mut result_recorded := false
 	mut title_start_levels := [1, 1, 1]
@@ -526,6 +524,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	C.tt_platform_finish_loading(app.platform)
 	step_seconds := f64(1.0 / sim.ticks_per_second)
 	mut previous := time.ticks()
+	mut presentation_previous_ms := presentation_time_ms()
 	mut accumulator := f64(0)
 	mut paused := false
 	mut pause_pressed := false
@@ -555,11 +554,19 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		app.audio.play_music(music_sequence.track)
 		C.tt_platform_reset_frame_timing(app.platform)
 		previous = time.ticks()
+		presentation_previous_ms = presentation_time_ms()
 	}
 	if test_effects {
 		println('Effect test enabled: automatic events run from 2 to 13 seconds.')
 	}
 	for !C.tt_platform_should_close(app.platform) {
+		// Advance existing UI state before input can start a new transition. A
+		// slow previous frame must not consume a fade that has only just begun.
+		// Simulation catch-up is capped separately below; UI uses real time.
+		presentation_now_ms := presentation_time_ms()
+		presentation_timers.advance(presentation_now_ms - presentation_previous_ms, title_mode,
+			simulation.game_over, replay_mode, calibration_mode)
+		presentation_previous_ms = presentation_now_ms
 		mut input_mask := C.tt_platform_input(app.platform)
 		input_mask = controller_menu_input_mask(input_mask, title_mode,
 			app.title_settings_open || title_menu_item == .help || replay_library.open || replay_mode,
@@ -585,7 +592,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				attract_replay = true
 				replay_camera_enabled = false
 				replay_hud_visible = true
-				replay_change_frames = 0
+				presentation_timers.replay_change_ms = 0
 				C.tt_platform_set_hud_visible(app.platform, true)
 			}
 			if chosen != -1 {
@@ -665,7 +672,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			// already pending when selection moved onto HELP.
 			if title_overlay_selected && replay_mode {
 				replay_mode = false
-				replay_change_frames = 0
+				presentation_timers.replay_change_ms = 0
 				C.tt_platform_set_hud_visible(app.platform, true)
 				app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
 			}
@@ -748,7 +755,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				app.title_settings_open = true
 				app.title_settings_item = .volume
 				replay_mode = false
-				replay_change_frames = 0
+				presentation_timers.replay_change_ms = 0
 				C.tt_platform_set_hud_visible(app.platform, true)
 				app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
 			} else if !app.title_settings_open && !replay_mode && title_menu_item == .replays
@@ -787,11 +794,11 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				simulation_config = with_compute_backend(gameplay_config_with_seed(app.grade, app.starting_level, next_game_seed(mut run_seed_source)), app.compute_backend)
 				simulation = app.new_simulation(simulation_config)
 				title_mode = false
-				transition_frames = menu_transition_frames
+				presentation_timers.transition_remaining_ms = menu_transition_duration_ms
 				replay_controls_blocked = C.tt_platform_controller_start_pressed(app.platform)
 				replay_mode = false
 				attract_replay = false
-				replay_change_frames = 0
+				presentation_timers.replay_change_ms = 0
 				recorded_inputs.clear()
 				replay_game_over_ticks = 0
 				result_recorded = false
@@ -805,6 +812,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				// slow removable storage) from both simulation elapsed time and FPS.
 				C.tt_platform_reset_frame_timing(app.platform)
 				previous = time.ticks()
+				presentation_previous_ms = presentation_time_ms()
 				println('Run started: ${sim.rules_for_grade(app.grade).name}, level ${app.starting_level}.')
 			}
 			if !app.title_settings_open && replay_down && !action_pressed
@@ -926,7 +934,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				attract_replay = false
 				result_recorded = false
 				accumulator = 0
-				transition_frames = menu_transition_frames
+				presentation_timers.transition_remaining_ms = menu_transition_duration_ms
 				replay_controls_blocked = true
 				input_mask = 0
 				C.tt_platform_set_paused(app.platform, paused)
@@ -938,13 +946,14 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				}
 				C.tt_platform_reset_frame_timing(app.platform)
 				previous = time.ticks()
+				presentation_previous_ms = presentation_time_ms()
 				resumed_run = true
 				println('Run resumed: ticks=${simulation.tick} score=${simulation.score} checksum=${simulation.checksum():016x}')
 			} else {
 				C.tt_platform_request_close(app.platform)
 			}
 		}
-		returning_from_game_over := should_return_to_title(title_mode, simulation.game_over, restart_down, restart_pressed, game_over_frames)
+		returning_from_game_over := should_return_to_title(title_mode, simulation.game_over, restart_down, restart_pressed, presentation_timers.game_over_elapsed_ms)
 		if returning_from_game_over || (!title_mode && !calibration_mode && escape_edge && !resumed_run) {
 			title_volume_preview.cancel()
 			suspending_run := !simulation.game_over
@@ -958,14 +967,14 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				app.save_player_data_if_enabled(player_data)
 			}
 			title_mode = true
-			transition_frames = menu_transition_frames
-			game_over_frames = 0
+			presentation_timers.transition_remaining_ms = menu_transition_duration_ms
+			presentation_timers.game_over_elapsed_ms = 0
 			accumulator = 0
 			paused = false
 			C.tt_platform_set_paused(app.platform, false)
 			replay_mode = false
 			attract_replay = last_replay.inputs.len > 0
-			replay_change_frames = 0
+			presentation_timers.replay_change_ms = 0
 			if attract_replay {
 				simulation_config = with_compute_backend(replay_gameplay_config_with_seed(last_replay.grade, last_replay.starting_level, last_replay.random_seed), app.compute_backend)
 				simulation = app.new_replay_simulation(last_replay)
@@ -1307,33 +1316,22 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		} else {
 			replay_camera.rotation
 		}, presentation.ship_render_surface_radius(course_camera_angle), presentation.ship_render_depth())
-		if transition_frames > 0 {
-			transition_frames--
-		}
-		if !title_mode && simulation.game_over {
-			game_over_frames++
-		} else if !simulation.game_over {
-			game_over_frames = 0
-		}
 		C.tt_platform_set_transition(app.platform, if calibration_mode {
 			f32(0)
 		} else {
-			presentation_fade(transition_frames, game_over_frames)
+			presentation_fade(presentation_timers.transition_remaining_ms, presentation_timers.game_over_elapsed_ms)
 		})
-		if !calibration_mode {
-			replay_change_frames = stepped_title_replay_transition(replay_change_frames, replay_mode)
-		}
 		replay_ratio := if calibration_mode {
 			f32(1)
 		} else {
-			title_replay_view_ratio(title_mode, last_replay.inputs.len > 0, replay_change_frames)
+			title_replay_view_ratio(title_mode, last_replay.inputs.len > 0, presentation_timers.replay_change_ms)
 		}
 		C.tt_platform_set_replay_view_ratio(app.platform, replay_ratio)
 		if calibration_mode {
 			C.tt_platform_set_hud_visible(app.platform, false)
-		} else if title_mode && replay_change_frames > 0 && replay_change_frames < replay_transition_frames {
+		} else if title_mode && presentation_timers.replay_change_ms > 0 && presentation_timers.replay_change_ms < replay_transition_duration_ms {
 			C.tt_platform_set_hud_visible(app.platform, false)
-		} else if title_replay_uses_gameplay_status(title_mode, replay_mode, replay_change_frames) {
+		} else if title_replay_uses_gameplay_status(title_mode, replay_mode, presentation_timers.replay_change_ms) {
 			// Switch the state bits before revealing the full-window replay HUD.
 			// Otherwise the title torus can flash for up to the next status tick.
 			app.set_gameplay_status(simulation, paused)

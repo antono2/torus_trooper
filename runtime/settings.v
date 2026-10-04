@@ -29,13 +29,13 @@ const default_luminosity = f32(default_luminosity_percent) / 100
 pub const default_window_width = 1280
 pub const default_window_height = 720
 
-// These presentation transitions count rendered frames, not simulation ticks.
-const menu_transition_frames = 30
-const replay_transition_frames = 30
-const game_over_fade_frames = 120
+// Presentation durations use elapsed monotonic time, independent of FPS.
+const menu_transition_duration_ms = i64(500)
+const replay_transition_duration_ms = i64(500)
+const game_over_fade_duration_ms = i64(2000)
 const game_over_fade_opacity = f32(0.65)
-const game_over_auto_return_frames = 1200
-const game_over_restart_delay_frames = 60
+const game_over_auto_return_ms = i64(20_000)
+const game_over_restart_delay_ms = i64(1000)
 
 // Sampling intervals below count fixed simulation ticks.
 const gameplay_status_interval_ticks = 10

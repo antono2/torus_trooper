@@ -12,7 +12,7 @@ the GLFW/Vulkan platform, sets input bindings, creates the mapped vertex
 buffers, opens a compute
 session, loads object sizes, and then attempts audio creation. Each failed
 step releases what has already been created.
-[`App.shutdown`](../../runtime/app.v#L2023) stops audio and
+[`App.shutdown`](../../runtime/app.v#L2010) stops audio and
 compute first, waits for the device to become idle before freeing Vulkan
 memory, and destroys the platform last. Calling `shutdown` again is safe
 because each released handle is cleared.
@@ -60,8 +60,8 @@ code, but it is not a general claim that V programs need a C renderer.
 
 The simulation increments counters such as `fired_shots`, `enemy_hits`, and
 `warning_beeps`; it does not call an audio API. `capture_audio_state` in
-[`runtime/app.v`](../../runtime/app.v#L2097) takes values before a tick.
-[`play_simulation_audio`](../../runtime/app.v#L2120) compares those values with
+[`runtime/app.v`](../../runtime/app.v#L2084) takes values before a tick.
+[`play_simulation_audio`](../../runtime/app.v#L2107) compares those values with
 the values after the tick and selects sound effects or music transitions.
 [`audio.v`](../../runtime/audio.v#L78)
 is a small V wrapper around [`audio_bridge.h`](../../runtime/audio_bridge.h),

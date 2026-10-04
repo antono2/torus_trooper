@@ -61,11 +61,11 @@ enough to replay it when the seed and rules are also fixed.
 
 After all due ticks, `App.run` derives a presentation fraction from its
 accumulator. It uses `presentation_course_position` and related helpers in
-[`simulation.v`](../../sim/simulation.v#L2275) to form a presentation copy of the
+[`simulation.v`](../../sim/simulation.v#L2271) to form a presentation copy of the
 ship state. It then obtains entity data from
-[`render_instances_for_camera_with_scales`](../../sim/render_snapshot.v#L555)
+[`render_instances_for_camera_with_scales`](../../sim/render_snapshot.v#L518)
 and tunnel geometry from
-[`render_course_wire_without_markers`](../../sim/course.v#L656).
+[`render_course_wire_without_markers`](../../sim/course.v#L655).
 [Chapter 5](05-rendering.md) follows those buffers into Vulkan.
 
 The distinction matters when adapting this design: a high-refresh display may

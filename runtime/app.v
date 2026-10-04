@@ -1560,11 +1560,6 @@ fn (app &App) new_replay_simulation(replay sim.Replay) sim.Simulation {
 	return simulation
 }
 
-fn adjacent_grade(grade sim.Grade, delta int) sim.Grade {
-	value := (int(grade) + delta + 3) % 3
-	return unsafe { sim.Grade(value) }
-}
-
 fn title_menu_item_for_grade(grade sim.Grade) TitleMenuItem {
 	return unsafe { TitleMenuItem(int(grade)) }
 }
@@ -1656,14 +1651,6 @@ const title_help_page_count = 3
 
 fn cycled_help_page(page int, delta int) int {
 	return (page + delta % title_help_page_count + title_help_page_count) % title_help_page_count
-}
-
-fn cycled_level(level int, max_level int, delta int) int {
-	maximum := int_max(max_level, 1)
-	if delta < 0 {
-		return if level <= 1 { maximum } else { level - 1 }
-	}
-	return if level >= maximum { 1 } else { level + 1 }
 }
 
 fn title_repeat_movement(was_pressed bool, repeat_ticks int) int {

@@ -2735,7 +2735,12 @@ fn test_enemy_fire_originates_from_enemy_on_schedule() {
 }
 
 fn test_aim_direction_uses_shortest_route_across_tunnel_seam() {
-	direction := aim_direction(Vec2{ x: 6.27, y: 20 }, Vec2{ x: 0.01, y: 0 })
+	from := Vec2{ x: 6.27, y: 20 }
+	to := Vec2{ x: 0.01, y: 0 }
+	direction := aim_direction_reversed(from, to, 1)
 	assert direction > 3.0
 	assert direction < 3.2
+	reversed := aim_direction_reversed(from, to, -1)
+	assert reversed < -3.0
+	assert reversed > -3.2
 }

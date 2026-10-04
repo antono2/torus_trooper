@@ -271,7 +271,8 @@ fn test_course_panels_follow_fractional_ship_travel() {
 	assert math.abs((first[0].z - second[0].z) - 0.275) < 0.00001
 	simulation.ship.course_position = 1
 	wrapped := simulation.render_course_snapshot(8, 8, 0)
-	assert math.abs(wrapped[0].z - (course_render_depth_base - course_render_backtrack * course_render_depth_scale)) < 0.00001
+	expected_backtrack := -course_render_camera_distance + course_render_rear_margin
+	assert math.abs(wrapped[0].z - (course_render_depth_base - expected_backtrack * course_render_depth_scale)) < 0.00001
 }
 
 fn test_course_rear_ring_is_retained_behind_the_camera_plane() {
@@ -1174,4 +1175,42 @@ fn test_invalid_render_soa_is_rejected_by_cpu_packer() {
 	}
 	assert !entities.valid()
 	assert pack_render_instances(entities).len == 0
+}
+
+// Test-side decoders for the packed data consumed by GLSL shaders.
+struct EnemyRenderCode {
+	tier    int
+	seed    int
+	damaged bool
+}
+
+fn decode_enemy_render_kind(value f32) EnemyRenderCode {
+	tier := int_max(0, int_min(2, int((value - 3) / enemy_shape_tier_stride)))
+	base := f32(3) + f32(tier) * enemy_shape_tier_stride
+	packed := int((value - base) / enemy_shape_code_scale + 0.5)
+	return EnemyRenderCode{
+		tier: tier
+		seed: packed % enemy_damaged_code_offset
+		damaged: packed >= enemy_damaged_code_offset
+	}
+}
+
+struct ParticleFragmentCode {
+	spin_bin           int
+	secondary_spin_bin int
+	width_bin          int
+	height_bin         int
+}
+
+fn decode_particle_fragment_payload(payload int) ParticleFragmentCode {
+	return ParticleFragmentCode{
+		spin_bin: payload & 63
+		secondary_spin_bin: (payload >> 6) & 63
+		width_bin: (payload >> 12) & 63
+		height_bin: (payload >> 18) & 63
+	}
+}
+
+fn multiplier_render_slot(kind f32) int {
+	return int(math.round((kind - 20) / multiplier_list_slot_kind_scale))
 }

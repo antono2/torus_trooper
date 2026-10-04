@@ -101,13 +101,14 @@ fn test_ship_mesh_scale_changes_extent_without_changing_topology() {
 }
 
 fn test_scaled_ship_clearance_preserves_size_one_and_compensates_growth() {
-	geometry := generate_ship_geometry(2, 62_047, false)
-	baseline := enemy_surface_clearance(2)
-	normal := ship_geometry_surface_clearance(geometry, 0.7, 1, baseline)
-	double := ship_geometry_surface_clearance(geometry, 0.7, 2, baseline)
-	assert normal == baseline
-	assert double > normal
-	assert math.abs(double - normal - ship_geometry_outward_extent(geometry, 0.7)) < 0.0001
+	for kind in 0 .. 3 {
+		baseline := enemy_surface_clearance(kind)
+		normal := readable_hull_surface_clearance(kind, 1, baseline)
+		double := readable_hull_surface_clearance(kind, 2, baseline)
+		assert normal == baseline
+		assert double > normal
+		assert readable_hull_surface_clearance(kind, 0.5, baseline) == baseline
+	}
 }
 
 fn test_scaled_player_hull_does_not_expand_toward_tunnel_wall() {

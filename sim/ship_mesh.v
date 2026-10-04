@@ -186,23 +186,6 @@ fn ship_structure_outward_extent(structure ShipStructureGeometry, bank f32) f32 
 	return extent
 }
 
-fn ship_geometry_outward_extent(geometry ShipGeometry, bank f32) f32 {
-	mut extent := f32(0)
-	for structure in geometry.structures {
-		extent = f32_max(extent, ship_structure_outward_extent(structure, bank))
-	}
-	return extent * course_render_height_scale
-}
-
-fn ship_geometry_surface_clearance(geometry ShipGeometry, bank f32, scale f32,
-	baseline f32) f32 {
-	// Size 1 retains the source-matched placement. For larger configured hulls,
-	// offset the center by precisely the additional outward extent so scaling
-	// cannot push more of the hull through the course surface.
-	extra_scale := f32_max(scale, 1) - 1
-	return baseline + ship_geometry_outward_extent(geometry, bank) * extra_scale
-}
-
 fn player_ship_surface_clearance(scale f32) f32 {
 	geometry := generate_ship_geometry(0, 1, false)
 	// The player silhouette is assembled from segmented

@@ -1430,10 +1430,6 @@ fn (mut simulation Simulation) emit_pattern_pipeline(position Vec2, direction f3
 	}
 }
 
-fn aim_direction(from Vec2, to Vec2) f32 {
-	return f32(math.atan2(angle_delta(from.x, to.x), to.y - from.y))
-}
-
 fn aim_direction_reversed(from Vec2, to Vec2, x_reverse f32) f32 {
 	return f32(math.atan2(angle_delta(from.x, to.x) * x_reverse, to.y - from.y))
 }

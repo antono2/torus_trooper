@@ -351,7 +351,6 @@ const course_render_camera_distance = -course_render_depth_base / course_render_
 // camera. Recycling at exactly one tile could discard the whole object while
 // rasterization still covered its camera-crossing edge, producing a flash.
 const course_render_rear_margin = f32(1.5)
-const course_render_backtrack = -course_render_camera_distance + course_render_rear_margin
 // Legacy snapshot helpers retain three quarters of the sampled course. The
 // runtime can request a longer solid-panel horizon, while boundary markers
 // continue to the last complete sampled ring.

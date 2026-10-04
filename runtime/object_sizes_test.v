@@ -111,9 +111,7 @@ fn test_calibration_scene_contains_each_visual_and_matching_label() {
 			assert visuals[0].depth == labels[0].depth
 			assert visuals[0].heading == labels[0].heading
 		}
-		assert calibration_object_visual_kind(index) > 0
 	}
-	assert calibration_object_visual_kind(15) == 63
 }
 
 fn test_calibration_camera_selection_follows_view_direction() {

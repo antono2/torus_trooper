@@ -102,7 +102,8 @@ To build and run the test suite, headless regression and Vulkan probe together:
 .\scripts\build_windows.ps1 -Verify
 ```
 
-The Vulkan probe requires a graphics driver and display session.
+Verification also requires Python 3 and the Vulkan SDK shader tools. The Vulkan
+probe requires a graphics driver and display session.
 
 ### Direct builds
 
@@ -470,6 +471,18 @@ A headless checksum checks simulated data. Visual changes also need observation
 of the affected scene. [Configuration and verification](guide/08-configuration-and-verification.md)
 explains the scope of each check and platform-specific development loops.
 
+### Compiler diagnostics
+
+CI and `scripts/check.sh` fail when a game compilation emits a warning or notice
+from maintained project sources. Windows verification (`build_windows.ps1 -Verify`)
+uses the same check. Dependency diagnostics remain visible without being counted
+as project warnings, and the separate V compiler bootstrap is outside this gate.
+Run a checked compilation directly with:
+
+```sh
+python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o torus_trooper .
+```
+
 ## Packaging
 
 ### Linux archive
@@ -480,7 +493,7 @@ After building, create an archive with its launcher and runtime libraries:
 bash scripts/package_linux.sh torus-trooper-linux-x86_64.tar.gz
 ```
 
-Packaging requires Python 3, `patchelf` and the distribution's installed
+Packaging requires Python 3, `glslangValidator`, `spirv-val`, `patchelf` and the distribution's installed
 runtime-library license notices. `play.sh` sets the working directory and adds
 `lib/` to the library search path; the executable also has a relative search
 path. Bundled library notices and a version manifest live in
@@ -492,7 +505,10 @@ path. Bundled library notices and a version manifest live in
 python scripts/package_windows.py torus-trooper-windows-x86_64.zip torus_trooper.exe
 ```
 
-Both packagers include runtime assets, documentation and license notices.
+Windows packaging requires Python 3 and the Vulkan SDK shader tools
+(`glslangValidator` and `spirv-val`). Both packagers compile shaders from the
+current source and validate the results before writing the archive. They include
+runtime assets, documentation and license notices.
 The executable loads `shaders/`, `sounds/` and `models/` relative to its working
 directory, so keep the extracted files together. The CI workflow also builds
 and checks both archive formats.

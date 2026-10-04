@@ -1,8 +1,6 @@
 module runtime
 
 import sim
-import os
-import font5x7
 import time
 
 #flag linux -lglfw
@@ -243,31 +241,6 @@ pub:
 	driver_version        u32
 	graphics_queue_family int
 	present_queue_family  int
-}
-
-enum TitleMenuItem {
-	normal
-	hard
-	extreme
-	settings
-	help
-	tune
-	exit
-	replays
-}
-
-enum TitleSettingsItem {
-	volume
-	antialiasing
-	track_draw_distance
-	wire_draw_distance
-	border_draw_distance
-	player_shot_distance
-	fps_limit
-	near_blur
-	near_fade
-	rear_track_blend
-	back
 }
 
 @[heap]
@@ -599,41 +572,27 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			input_mask = 0
 		}
 		if replay_library.open {
-			for {
-				event := C.tt_platform_take_replay_event(app.platform)
-				if event == 0 {
-					break
-				}
-				clipboard := if event == -1000 {
-					unsafe { C.tt_platform_clipboard(app.platform).vstring() }
-				} else {
-					''
-				}
-				export_directory := os.join_path(os.dir(app.player_data_path), 'replays')
-				chosen := replay_library.event(event, mut player_data, export_directory, clipboard)
-				if replay_library.data_changed { app.save_player_data_if_enabled(player_data) }
-				if chosen >= 0 {
-					last_replay = player_data.replays[chosen].simulation_replay()
-					simulation_config = with_compute_backend(replay_gameplay_config_with_seed(last_replay.grade, last_replay.starting_level, last_replay.random_seed), app.compute_backend)
-					simulation = app.new_replay_simulation(last_replay)
-					replay_camera = sim.new_replay_camera(u32(last_replay.random_seed))
-					replay_game_over_ticks = 0
-					accumulator = 0
-					replay_mode = true
-					replay_from_library = true
-					attract_replay = true
-					replay_camera_enabled = false
-					replay_hud_visible = true
-					replay_change_frames = 0
-					C.tt_platform_set_hud_visible(app.platform, true)
-				}
-				if chosen != -1 {
-					replay_controls_blocked = true
-					C.tt_platform_replay_overlay(app.platform, false, false, -1)
-					if chosen == -2 {
-						app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
-					}
-					break
+			chosen := app.take_replay_library_choice(mut replay_library, mut player_data)
+			if chosen >= 0 {
+				last_replay = player_data.replays[chosen].simulation_replay()
+				simulation_config = with_compute_backend(replay_gameplay_config_with_seed(last_replay.grade, last_replay.starting_level, last_replay.random_seed), app.compute_backend)
+				simulation = app.new_replay_simulation(last_replay)
+				replay_camera = sim.new_replay_camera(u32(last_replay.random_seed))
+				replay_game_over_ticks = 0
+				accumulator = 0
+				replay_mode = true
+				replay_from_library = true
+				attract_replay = true
+				replay_camera_enabled = false
+				replay_hud_visible = true
+				replay_change_frames = 0
+				C.tt_platform_set_hud_visible(app.platform, true)
+			}
+			if chosen != -1 {
+				replay_controls_blocked = true
+				C.tt_platform_replay_overlay(app.platform, false, false, -1)
+				if chosen == -2 {
+					app.set_title_status(player_data, title_start_levels, last_replay.inputs.len > 0, title_menu_item, title_help_page)
 				}
 			}
 			input_mask = 0
@@ -731,52 +690,11 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 					direction = if menu_input.left { -1 } else { 1 }
 				}
 				if movement > 0 {
-					match app.title_settings_item {
-						.volume {
-							next_volume := stepped_volume_percent(app.volume_percent, direction * movement)
-							if next_volume != app.volume_percent {
-								app.apply_volume(next_volume, mut player_data)
-								if !isnil(app.audio)
-									&& title_volume_preview.arm(time.ticks()) {
-									music_sequence = new_music_sequence(simulation.config.random_seed, 4, previous_music_track)
-									previous_music_track = music_sequence.track
-									app.audio.play_music(music_sequence.track)
-								}
-							}
-						}
-						.antialiasing {
-							mut requested := stepped_antialiasing_samples(app.antialiasing_samples, direction)
-							for requested != app.antialiasing_samples
-								&& !C.tt_platform_antialiasing_supported(app.platform, requested) {
-								requested = stepped_antialiasing_samples(requested, direction)
-							}
-							app.apply_antialiasing(requested, mut player_data)
-						}
-						.near_blur {
-							app.apply_near_blur(app.near_blur_percent + direction * movement * 5, mut player_data)
-						}
-						.near_fade {
-							app.apply_near_fade(app.near_fade_percent + direction * movement * 5, mut player_data)
-						}
-						.rear_track_blend {
-							app.apply_rear_track_blend(app.rear_track_blend_percent + direction * movement, mut player_data)
-						}
-						.track_draw_distance {
-							app.apply_track_draw_distance(app.track_draw_distance + direction * movement, mut player_data)
-						}
-						.wire_draw_distance {
-							app.apply_wire_draw_distance(app.wire_draw_distance + direction * movement, mut player_data)
-						}
-						.border_draw_distance {
-							app.apply_border_draw_distance(app.border_draw_distance + direction * movement, mut player_data)
-						}
-						.player_shot_distance {
-							app.apply_player_shot_distance(app.object_sizes.player_shot_distance + f32(direction * movement))
-						}
-						.fps_limit {
-							app.apply_fps_limit(stepped_fps_limit(app.fps_limit, direction), mut player_data)
-						}
-						.back {}
+					if app.adjust_title_setting(direction, movement, mut player_data)
+						&& !isnil(app.audio) && title_volume_preview.arm(time.ticks()) {
+						music_sequence = new_music_sequence(simulation.config.random_seed, 4, previous_music_track)
+						previous_music_track = music_sequence.track
+						app.audio.play_music(music_sequence.track)
 					}
 					selection_changed = true
 				}
@@ -1434,18 +1352,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				C.tt_platform_request_close(app.platform)
 			}
 		}
-		if replay_library.open {
-			lines, selected_line := replay_library.lines(player_data)
-			C.tt_platform_replay_overlay(app.platform, true, replay_library.mode in [
-				.rename,
-				.import_path,
-				.export_path,
-			], selected_line)
-			for line in lines {
-				codes := line.runes().map(u8(font5x7.code_for_rune(it)))
-				C.tt_platform_replay_line(app.platform, codes.data, codes.len)
-			}
-		}
+		app.draw_replay_library(replay_library, player_data)
 		if !C.tt_platform_poll(app.platform) {
 			eprintln('rendering failed: ${unsafe { C.tt_platform_last_error().vstring() }}')
 			break
@@ -1464,441 +1371,8 @@ fn (app &App) save_player_data_if_enabled(data PlayerData) {
 	}
 }
 
-fn (app &App) set_title_status(data PlayerData, start_levels []int, has_replay bool,
-	active_menu_item TitleMenuItem, help_page int) {
-	for grade_index in 0 .. 3 {
-		grade := unsafe { sim.Grade(grade_index) }
-		C.tt_platform_set_title_grade_info(app.platform, grade_index, start_levels[grade_index], title_max_level(data, grade, app.god_mode), data.high_scores[grade_index], data.high_score_start_levels[grade_index], data.high_score_end_levels[grade_index])
-	}
-	grade := int(app.grade)
-	max_level := title_max_level(data, app.grade, app.god_mode)
-	C.tt_platform_set_title_status(app.platform, grade, app.starting_level, max_level, data.high_scores[grade], data.high_score_start_levels[grade], data.high_score_end_levels[grade], has_replay, int(active_menu_item), app.volume_percent, help_page, app.god_mode, app.title_settings_open, int(app.title_settings_item), app.antialiasing_samples, app.near_blur_percent, app.near_fade_percent, app.rear_track_blend_percent, app.track_draw_distance, app.wire_draw_distance, app.border_draw_distance, int(app.object_sizes.player_shot_distance + 0.5), app.fps_limit)
-}
-
 fn (app &App) set_gameplay_status(simulation &sim.Simulation, paused bool) {
 	C.tt_platform_set_status(app.platform, simulation.score, simulation.remaining_time_ms, simulation.ship.hits, int(simulation.level), int(simulation.ship.speed * displayed_speed_scale), simulation.stage.rank, int_max(simulation.stage.zone_end_rank - simulation.stage.rank, 0), simulation.next_extend_score, simulation.time_change_ticks, simulation.time_change_seconds, simulation.game_over, paused, app.god_mode)
-}
-
-fn gameplay_config(grade sim.Grade, starting_level int) sim.SimulationConfig {
-	return gameplay_config_with_seed(grade, starting_level, u64(0x6d2b79f5))
-}
-
-fn next_game_seed(mut source sim.Mt19937) u64 {
-	return u64(source.next_u32())
-}
-
-fn completed_run_replay(grade sim.Grade, starting_level int, simulation &sim.Simulation,
-	inputs []u8) sim.Replay {
-	return sim.Replay{
-		grade:                grade
-		starting_level:       starting_level
-		random_seed:          simulation.config.random_seed
-		inputs:               inputs.clone()
-		player_shot_distance: simulation.config.player_shot_distance
-		god_mode:             simulation.god_mode
-	}
-}
-
-fn replay_for_title_return(previous sim.Replay, grade sim.Grade, starting_level int,
-	simulation &sim.Simulation, inputs []u8) sim.Replay {
-	if inputs.len == 0 {
-		return previous
-	}
-	return completed_run_replay(grade, starting_level, simulation, inputs)
-}
-
-fn gameplay_config_with_seed(grade sim.Grade, starting_level int, random_seed u64) sim.SimulationConfig {
-	return sim.SimulationConfig{
-		grade:                 grade
-		starting_level:        starting_level
-		random_seed:           random_seed
-		collisions:            true
-		enemy_interval:        90
-		enemy_fire_interval:   75
-		stage_progression:     true
-		procedural_course:     true
-		run_time_ms:           sim.default_run_time_ms
-		release_before_action: true
-		barrage:               sim.Barrage{ name: 'enemy_owned_fire', emitters: [] }
-	}
-}
-
-fn replay_gameplay_config_with_seed(grade sim.Grade, starting_level int, random_seed u64) sim.SimulationConfig {
-	config := gameplay_config_with_seed(grade, starting_level, random_seed)
-	return sim.SimulationConfig{
-		...config
-		replay_mode: true
-	}
-}
-
-fn with_compute_backend(config sim.SimulationConfig, backend sim.ComputeBackend) sim.SimulationConfig {
-	return sim.SimulationConfig{
-		...config
-		compute_backend: backend
-	}
-}
-
-fn (app &App) new_simulation(config sim.SimulationConfig) sim.Simulation {
-	calibrated_config := sim.SimulationConfig{
-		...config
-		player_shot_distance: app.object_sizes.player_shot_distance
-	}
-	mut simulation := sim.new_simulation(calibrated_config)
-	simulation.attach_compute_session(app.compute_session)
-	simulation.god_mode = app.god_mode
-	return simulation
-}
-
-fn (app &App) new_replay_simulation(replay sim.Replay) sim.Simulation {
-	base := with_compute_backend(replay_gameplay_config_with_seed(replay.grade, replay.starting_level, replay.random_seed), app.compute_backend)
-	mut simulation := sim.new_simulation(sim.SimulationConfig{
-		...base
-		player_shot_distance: replay.player_shot_distance
-	})
-	simulation.attach_compute_session(app.compute_session)
-	simulation.god_mode = replay.god_mode
-	return simulation
-}
-
-fn title_menu_item_for_grade(grade sim.Grade) TitleMenuItem {
-	return unsafe { TitleMenuItem(int(grade)) }
-}
-
-fn title_menu_grade(item TitleMenuItem) ?sim.Grade {
-	if item !in [.normal, .hard, .extreme] {
-		return none
-	}
-	return unsafe { sim.Grade(int(item)) }
-}
-
-fn title_menu_accepts_horizontal_activation(item TitleMenuItem) bool {
-	return item in [.settings, .tune, .exit, .replays]
-}
-
-fn title_max_level(data PlayerData, grade sim.Grade, god_mode bool) int {
-	return if god_mode {
-		god_mode_max_start_level
-	} else {
-		int_min(data.reached_levels[int(grade)], god_mode_max_start_level)
-	}
-}
-
-fn cycled_title_menu_item(item TitleMenuItem, delta int, god_mode bool) TitleMenuItem {
-	items := if god_mode {
-		[TitleMenuItem.normal, .hard, .extreme, .settings, .replays, .tune, .help, .exit]
-	} else {
-		[TitleMenuItem.normal, .hard, .extreme, .settings, .replays, .help, .exit]
-	}
-	mut index := items.index(item)
-	if index < 0 {
-		index = 0
-	}
-	index = (index + delta + items.len) % items.len
-	return items[index]
-}
-
-fn cycled_title_settings_item(item TitleSettingsItem, delta int) TitleSettingsItem {
-	return unsafe { TitleSettingsItem((int(item) + delta % 11 + 11) % 11) }
-}
-
-fn normalized_track_draw_distance(distance int) int {
-	return int_min(int_max(distance, minimum_track_draw_distance), maximum_track_draw_distance)
-}
-
-fn normalized_rear_track_blend_percent(percent int) int {
-	return int_min(int_max(percent, 0), 100)
-}
-
-fn course_ring_count_for_draw_distance(distance int) int {
-	return int_max(2, normalized_track_draw_distance(distance) + 1)
-}
-
-fn normalized_fps_limit(limit int) int {
-	return if limit in [fps_limit_display, fps_limit_unlocked, 60] {
-		limit
-	} else {
-		fps_limit_display
-	}
-}
-
-fn stepped_fps_limit(limit int, direction int) int {
-	values := [60, fps_limit_display, fps_limit_unlocked]
-	mut index := values.index(normalized_fps_limit(limit))
-	if index < 0 {
-		index = 1
-	}
-	return values[(index + direction + values.len) % values.len]
-}
-
-fn fps_limit_label(limit int) string {
-	return match normalized_fps_limit(limit) {
-		fps_limit_display { 'display' }
-		fps_limit_unlocked { 'unlocked' }
-		else { '${limit}' }
-	}
-}
-
-fn stepped_antialiasing_samples(samples int, direction int) int {
-	values := [1, 2, 4, 8]
-	mut index := values.index(samples)
-	if index < 0 {
-		index = 0
-	}
-	return values[(index + direction + values.len) % values.len]
-}
-
-const title_help_page_count = 3
-
-fn cycled_help_page(page int, delta int) int {
-	return (page + delta % title_help_page_count + title_help_page_count) % title_help_page_count
-}
-
-fn title_repeat_movement(was_pressed bool, repeat_ticks int) int {
-	if !was_pressed {
-		return 1
-	}
-	next_tick := repeat_ticks + 1
-	if next_tick < 30 || next_tick % 5 != 0 {
-		return 0
-	}
-	scale := next_tick / 30
-	return scale * scale
-}
-
-fn settings_adjustment_on_release(pending int, left bool, right bool) (int, int) {
-	if left || right {
-		if left != right {
-			return 0, if left { -1 } else { 1 }
-		}
-		return 0, pending
-	}
-	return pending, 0
-}
-
-fn title_setting_repeats(item TitleSettingsItem) bool {
-	return item in [.volume, .track_draw_distance, .wire_draw_distance, .border_draw_distance,
-		.player_shot_distance, .near_blur, .near_fade, .rear_track_blend]
-}
-
-fn title_moved_level(level int, max_level int, delta int, repeating bool) int {
-	maximum := int_max(max_level, 1)
-	next := level + delta
-	if next < 1 {
-		return if repeating { 1 } else { maximum }
-	}
-	if next > maximum {
-		return if repeating { maximum } else { 1 }
-	}
-	return next
-}
-
-fn volume_percent_from_level(level f32) int {
-	return int_min(int_max(int(level * 100 + 0.5), 0), 100)
-}
-
-fn stepped_volume_percent(percent int, direction int) int {
-	return int_min(int_max(percent + direction * 5, 0), 100)
-}
-
-struct TitleVolumePreview {
-mut:
-	active     bool
-	stop_at_ms i64
-}
-
-// arm returns true only when the caller needs to start music. Repeated slider
-// movement keeps the current track playing and extends the audible sample.
-fn (mut preview TitleVolumePreview) arm(now_ms i64) bool {
-	should_start := !preview.active
-	preview.active = true
-	preview.stop_at_ms = now_ms + title_volume_preview_duration_ms
-	return should_start
-}
-
-fn (mut preview TitleVolumePreview) take_expired(now_ms i64) bool {
-	if !preview.active || now_ms < preview.stop_at_ms {
-		return false
-	}
-	preview.cancel()
-	return true
-}
-
-fn (mut preview TitleVolumePreview) cancel() {
-	preview.active = false
-	preview.stop_at_ms = 0
-}
-
-fn (app &App) volume_level() f32 {
-	return f32(app.volume_percent) / 100
-}
-
-fn (mut app App) apply_volume(percent int, mut data PlayerData) {
-	app.volume_percent = int_min(int_max(percent, 0), 100)
-	data.volume_percent = app.volume_percent
-	if !isnil(app.audio) {
-		app.audio.set_volume(app.volume_level())
-	}
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_antialiasing(samples int, mut data PlayerData) {
-	applied := C.tt_platform_set_antialiasing(app.platform, samples)
-	if applied <= 0 {
-		eprintln('could not change anti-aliasing: ${unsafe { C.tt_platform_last_error().vstring() }}')
-		return
-	}
-	app.antialiasing_samples = applied
-	data.antialiasing_samples = applied
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_near_blur(percent int, mut data PlayerData) {
-	app.near_blur_percent = int_min(int_max(percent, 0), 100)
-	data.near_blur_percent = app.near_blur_percent
-	C.tt_platform_set_near_camera_blur(app.platform, f32(app.near_blur_percent) / 100.0)
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_near_fade(percent int, mut data PlayerData) {
-	app.near_fade_percent = int_min(int_max(percent, 0), 100)
-	data.near_fade_percent = app.near_fade_percent
-	C.tt_platform_set_near_camera_fade(app.platform, f32(app.near_fade_percent) / 100.0)
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_rear_track_blend(percent int, mut data PlayerData) {
-	app.rear_track_blend_percent = normalized_rear_track_blend_percent(percent)
-	data.rear_track_blend = app.rear_track_blend_percent
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_track_draw_distance(distance int, mut data PlayerData) {
-	app.track_draw_distance = normalized_track_draw_distance(distance)
-	data.track_draw_distance = app.track_draw_distance
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_wire_draw_distance(distance int, mut data PlayerData) {
-	app.wire_draw_distance = normalized_track_draw_distance(distance)
-	data.wire_draw_distance = app.wire_draw_distance
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_border_draw_distance(distance int, mut data PlayerData) {
-	app.border_draw_distance = normalized_track_draw_distance(distance)
-	data.border_draw_distance = app.border_draw_distance
-	app.save_player_data_if_enabled(data)
-}
-
-fn (mut app App) apply_player_shot_distance(distance f32) {
-	app.object_sizes.player_shot_distance = clamp_player_shot_distance(distance)
-	if !app.persistence_enabled || app.object_sizes_path.len == 0 {
-		return
-	}
-	save_object_sizes(app.object_sizes_path, app.object_sizes) or {
-		eprintln('could not save player shot distance: ${err}')
-	}
-}
-
-fn (mut app App) apply_fps_limit(limit int, mut data PlayerData) {
-	normalized := normalized_fps_limit(limit)
-	if !C.tt_platform_set_fps_limit(app.platform, normalized) {
-		eprintln('could not change FPS limit: ${unsafe { C.tt_platform_last_error().vstring() }}')
-		return
-	}
-	app.fps_limit = normalized
-	data.fps_limit = normalized
-	app.save_player_data_if_enabled(data)
-}
-
-fn presentation_fade(transition_frames int, game_over_frames int) f32 {
-	transition := f32(int_max(transition_frames, 0)) / f32(menu_transition_frames)
-	game_over := f32(int_min(int_max(game_over_frames, 0), game_over_fade_frames)) / f32(game_over_fade_frames) * game_over_fade_opacity
-	return if transition > game_over { transition } else { game_over }
-}
-
-struct TitleReplayView {
-	replay_mode    bool
-	attract_replay bool
-}
-
-fn toggled_title_replay(replay_mode bool, has_replay bool) TitleReplayView {
-	if !has_replay {
-		return TitleReplayView{
-			replay_mode: replay_mode
-		}
-	}
-	return TitleReplayView{
-		replay_mode:    !replay_mode
-		attract_replay: replay_mode
-	}
-}
-
-fn title_replay_toggle_allowed(menu_item TitleMenuItem, has_replay bool) bool {
-	return menu_item !in [.settings, .help, .tune, .replays, .exit] && has_replay
-}
-
-fn stepped_title_replay_transition(frames int, replay_mode bool) int {
-	if replay_mode {
-		return int_min(frames + 1, replay_transition_frames)
-	}
-	return int_max(frames - 1, 0)
-}
-
-fn title_replay_view_ratio(title_mode bool, has_replay bool, frames int) f32 {
-	if !title_mode || !has_replay {
-		return 1
-	}
-	return f32(int_min(int_max(frames, 0), replay_transition_frames)) / f32(replay_transition_frames)
-}
-
-fn camera_depth_for_render(cinematic bool, replay_depth f32, ship_relative_depth f32) f32 {
-	// Both camera paths use course units. In gameplay the camera
-	// advances by 30% of the ship's longitudinal offset, leaving 70% as visible
-	// ship movement. The 2D shaders negate this eye movement when forming their
-	// view depth and apply the shared course-depth scale themselves.
-	return if cinematic { replay_depth } else { -ship_relative_depth * 0.3 }
-}
-
-fn should_play_simulation_audio(title_mode bool, replay_mode bool, attract_replay bool) bool {
-	return !title_mode && !replay_mode && !attract_replay
-}
-
-fn should_advance_simulation(title_mode bool, replay_mode bool, attract_replay bool,
-	paused bool) bool {
-	return !paused && (!title_mode || replay_mode || attract_replay)
-}
-
-fn should_render_world(title_mode bool, replay_mode bool, attract_replay bool,
-	title_help_visible bool) bool {
-	return !title_mode || (!title_help_visible && (replay_mode || attract_replay))
-}
-
-fn should_return_to_title(title_mode bool, game_over bool, restart_down bool,
-	restart_pressed bool, game_over_frames int) bool {
-	return !title_mode && game_over
-		&& (game_over_frames > game_over_auto_return_frames || (game_over_frames > game_over_restart_delay_frames && restart_down && !restart_pressed))
-}
-
-fn should_refresh_gameplay_status(paused bool, game_over bool, tick int) bool {
-	return paused || game_over || tick % gameplay_status_interval_ticks == 0
-}
-
-fn replay_uses_cinematic_camera(replay_mode bool, attract_replay bool, cinematic_selected bool) bool {
-	return if replay_mode { cinematic_selected } else { attract_replay }
-}
-
-fn title_replay_uses_gameplay_status(title_mode bool, replay_mode bool,
-	replay_change_frames int) bool {
-	return title_mode && replay_mode && replay_change_frames == replay_transition_frames
-}
-
-fn replay_input_ended(input_index int, input_count int) bool {
-	return input_index >= input_count
-}
-
-fn should_restart_title_replay(game_over_ticks int) bool {
-	return game_over_ticks > attract_replay_restart_delay_ticks
 }
 
 fn inject_test_event(mut simulation sim.Simulation) {

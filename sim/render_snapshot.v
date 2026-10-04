@@ -201,7 +201,7 @@ fn enemy_render_kind_with_damage(kind int, shape_seed int, damaged bool) f32 {
 	tier := int_max(0, int_min(2, kind))
 	seed := int_max(0, shape_seed % 99_999)
 	code := seed + if damaged { enemy_damaged_code_offset } else { 0 }
-	return f32(3) + f32(tier) * enemy_shape_tier_stride + f32(code) * enemy_shape_code_scale
+	return render_enemy_kind + f32(tier) * enemy_shape_tier_stride + f32(code) * enemy_shape_code_scale
 }
 
 fn particle_render_kind(particle Particle) f32 {
@@ -215,7 +215,7 @@ fn particle_render_kind(particle Particle) f32 {
 	luminosity_bin := int(clamp_f32(particle.luminosity, 0, 1) * 15 + 0.5)
 	tier := int_max(0, int_min(2, particle.visual_tier))
 	payload := tier * 32768 + height_bin * 256 + life_bin * 16 + luminosity_bin
-	return f32(6) + f32(int(particle.kind)) * 0.25 + f32(payload) * particle_payload_scale
+	return render_particle_kind + f32(int(particle.kind)) * 0.25 + f32(payload) * particle_payload_scale
 }
 
 fn particle_render_heading(particle Particle, reflected bool) f32 {
@@ -251,7 +251,7 @@ fn multiplier_popup_payload(popup MultiplierPopup) f32 {
 }
 
 fn multiplier_render_kind(slot int) f32 {
-	return 20 + f32(slot) * multiplier_list_slot_kind_scale
+	return render_multiplier_kind + f32(slot) * multiplier_list_slot_kind_scale
 }
 
 fn enemy_surface_clearance(kind int) f32 {
@@ -328,16 +328,16 @@ pub fn (simulation &Simulation) render_entity_soa_for_camera_with_scales(camera_
 	if !ship_hidden {
 		ship_depth := simulation.ship.relative_depth + ship_render_depth_offset
 		ship_angle, ship_radius, ship_tangent_angle, ship_tangent_radius, ship_lateral_angle, ship_lateral_radius, ship_normal_angle, ship_normal_radius := simulation.actor_surface_render_pose(simulation.ship.angle, ship_depth, camera_angle, -player_clearance)
-		entities.append_surface_scaled(ship_angle, ship_depth, 1, simulation.ship.bank, scales.player, ship_radius, ship_tangent_angle, ship_tangent_radius, ship_lateral_angle, ship_lateral_radius, ship_normal_angle, ship_normal_radius, render_z_rotation(-simulation.ship.bank))
+		entities.append_surface_scaled(ship_angle, ship_depth, render_player_kind, simulation.ship.bank, scales.player, ship_radius, ship_tangent_angle, ship_tangent_radius, ship_lateral_angle, ship_lateral_radius, ship_normal_angle, ship_normal_radius, render_z_rotation(-simulation.ship.bank))
 	}
 	for bullet in simulation.bullets {
 		if !bullet.alive {
 			continue
 		}
 		scale_marker := if bullet.visual_scale > 1.1 { f32(0.5) } else { f32(0) }
-		mut kind := f32(7 + bullet.visual_shape) + scale_marker
+		mut kind := f32(int(render_bullet_kind) + bullet.visual_shape) + scale_marker
 		if bullet.disappear_ticks > 0 {
-			fade := 1.0 - f32(bullet.disappear_ticks) / 45.0
+			fade := 1.0 - f32(bullet.disappear_ticks) / f32(bullet_disappear_duration_ticks)
 			kind += 1.0 + fade * 0.49
 		}
 		spin := f32(bullet.age) * f32(math.pi) * 6.0 / 180.0
@@ -361,9 +361,9 @@ pub fn (simulation &Simulation) render_entity_soa_for_camera_with_scales(camera_
 		if !shot.alive {
 			continue
 		}
-		base_kind := if shot.star_shell { f32(2.25) } else { f32(2) }
+		base_kind := if shot.star_shell { render_star_shot_kind } else { render_shot_kind }
 		kind := if shot.charged {
-			f32(5) + clamp_f32(shot.size / 13.6, 0, 1) * 0.49
+			render_charged_shot_kind + clamp_f32(shot.size / 13.6, 0, 1) * 0.49
 		} else {
 			base_kind + clamp_f32(shot.size, 0, 1) * 0.1
 		}
@@ -418,7 +418,7 @@ pub fn (simulation &Simulation) render_entity_soa_for_camera_with_scales(camera_
 	}
 	for bit in simulation.boss_bits() {
 		angle, radius, tangent_angle, tangent_radius, lateral_angle, lateral_radius, normal_angle, normal_radius := simulation.actor_surface_render_pose(bit.position.x, bit.position.y, camera_angle, -0.2)
-		entities.append_surface_scaled(angle, bit.position.y, 4.6, bit.rotation, scales.boss_bit, radius, tangent_angle, tangent_radius, lateral_angle, lateral_radius, normal_angle, normal_radius, render_y_rotation(bit.rotation))
+		entities.append_surface_scaled(angle, bit.position.y, render_boss_bit_kind, bit.rotation, scales.boss_bit, radius, tangent_angle, tangent_radius, lateral_angle, lateral_radius, normal_angle, normal_radius, render_y_rotation(bit.rotation))
 	}
 	for particle in simulation.particles {
 		if !particle.alive {

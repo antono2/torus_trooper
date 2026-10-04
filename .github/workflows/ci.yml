@@ -106,18 +106,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool x11-utils bubblewrap patchelf libxxf86vm1 libx11-xcb1 ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools
       - name: Compile and validate shaders
         run: |
-          for source in shaders/*.vert shaders/*.frag; do
-            output="/tmp/$(basename "$source").spv"
-            glslangValidator -V "$source" -o "$output"
-            spirv-val "$output"
-          done
-          for shader in shaders/*.spv; do spirv-val "$shader"; done
+          python3 scripts/test_build_tools.py
+          python3 scripts/build_shaders.py
       - name: Test deterministic simulation and runtime
         run: |
-          v -cc gcc test torus_trooper_test.v
-          v -cc gcc test font5x7 sim runtime
+          python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test torus_trooper_test.v
+          python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test font5x7 sim runtime
       - name: Compile game
-        run: v -cc gcc -o torus_trooper .
+        run: python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o torus_trooper .
       - name: Run Vulkan validation smoke
         run: |
           set +e
@@ -128,13 +124,13 @@ jobs:
           if [[ $status -ne 0 && $status -ne 124 ]]; then exit $status; fi
           if grep -Eiq 'validation error|vuid-|segmentation|assert|fatal' validation.log; then exit 1; fi
       - name: Compile and smoke test with TinyCC
-        run: v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
+        run: python3 scripts/check_compiler_diagnostics.py -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
       - name: Test OpenCL motion backend
         # V3 currently drops generic buffer typedefs in test files that do not
         # call the optional OpenCL path. Keep those declarations for this suite.
-        run: v -no-skip-unused -d opencl_compute -cc gcc test sim
+        run: python3 scripts/check_compiler_diagnostics.py -- v -no-skip-unused -d opencl_compute -cc gcc test sim
       - name: Compile OpenCL backend with TinyCC
-        run: v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc . && ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
+        run: python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc . && ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate

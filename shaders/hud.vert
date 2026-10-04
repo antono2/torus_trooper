@@ -739,11 +739,11 @@ void draw_title_grade_label_vertex() {
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
     bool active_grade = grade >= 0 && frame.remaining_time_ms == grade;
-    bool menu_active = active_grade || (group == 12 && frame.remaining_time_ms == 3)
-               || (group == 13 && frame.remaining_time_ms == 4)
-               || (group == 15 && frame.remaining_time_ms == 5)
-               || (group == 14 && frame.remaining_time_ms == 6)
-               || (group == 16 && frame.remaining_time_ms == 7);
+    bool menu_active = active_grade || (group == 12 && frame.remaining_time_ms == TT_MENU_SETTINGS)
+               || (group == 13 && frame.remaining_time_ms == TT_MENU_HELP)
+               || (group == 15 && frame.remaining_time_ms == TT_MENU_TUNE)
+               || (group == 14 && frame.remaining_time_ms == TT_MENU_EXIT)
+               || (group == 16 && frame.remaining_time_ms == TT_MENU_REPLAYS);
     glyph_color = menu_active && (grade_row <= 1 || grade < 0) ? color_ui_value_ice_white
                 : grade_row == 0 ? color_ui_label_blue_gray
                 : grade >= 0 && grade_row > 1 ? color_ui_muted_slate : color_ui_label_blue_gray;
@@ -1101,7 +1101,7 @@ int settings_glyph_code(int line, int column) {
 void draw_help_vertex() {
     bool settings_visible = (frame.state & TT_HUD_SETTINGS) != 0;
     bool visible = (frame.state & TT_HUD_TITLE) != 0
-        && (frame.remaining_time_ms == 4 || settings_visible);
+        && (frame.remaining_time_ms == TT_MENU_HELP || settings_visible);
     if (!visible) {
         glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
@@ -1195,7 +1195,7 @@ void draw_menu_selection_vertex() {
         bottom = top + 7.0 * pitch + 0.028;
         left = -0.93;
         right = 0.25;
-    } else if (frame.remaining_time_ms >= 0 && frame.remaining_time_ms <= 2) {
+    } else if (frame.remaining_time_ms >= TT_MENU_NORMAL && frame.remaining_time_ms <= TT_MENU_EXTREME) {
         float center = title_grade_center_y(frame.remaining_time_ms);
         top = center - 0.077;
         bottom = center + 0.077;

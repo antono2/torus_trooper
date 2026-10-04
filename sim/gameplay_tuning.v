@@ -64,3 +64,23 @@ const ship_base_sight_depth = f32(35)
 const relative_depth_min = f32(-2.5)
 const relative_depth_max = f32(2.5)
 const relative_depth_step = f32(0.05)
+
+// Side-shot spread repeats over five angles, alternating left/right. Angles
+// are radians; the final factor makes each step one fifth of the spread.
+const side_fire_min_angle = f32(0.01)
+const side_fire_max_angle = f32(0.1)
+const side_fire_angle_steps = 5
+const side_fire_angle_step_ratio = f32(0.2)
+// Legacy reciprocal cadence: more speed increases density and shortens the
+// interval. These large coefficients preserve the original firing rhythm.
+const side_fire_density_scale = f32(99_999)
+const side_fire_interval_numerator = f32(100_000)
+
+// Boss scheduling uses course slices. The sentinel means no boss is scheduled;
+// the threshold recognizes it even after distance has been subtracted.
+const boss_distance_unscheduled = f32(9_999_999)
+const boss_distance_unscheduled_threshold = f32(99_999)
+const first_boss_min_distance = 100
+const first_boss_distance_variation = 50 // Random addition in [0, 50).
+const following_boss_min_distance = 60
+const following_boss_distance_variation = 30 // Random addition in [0, 30).

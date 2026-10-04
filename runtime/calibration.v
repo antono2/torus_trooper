@@ -286,25 +286,3 @@ fn (scene &CalibrationScene) render_ship_meshes(sizes ObjectSizes, models sim.Sh
 	}
 	return sim.render_ship_mesh_previews_with_models(previews, models)
 }
-
-fn calibration_object_visual_kind(index int) f32 {
-	// Kept in one place so the shader's direct-world mapping remains auditable.
-	return match object_size_kind(index) {
-		.player { f32(1) }
-		.player_shot { f32(2.1) }
-		.star_shot { f32(2.35) }
-		.charged_shot { f32(5.49) }
-		.enemy_small { f32(3.00001) }
-		.enemy_middle { f32(3.12501) }
-		.enemy_boss { f32(3.25001) }
-		.boss_bit { f32(4.6) }
-		.bullet_triangle { f32(7) }
-		.bullet_square { f32(9) }
-		.bullet_bar { f32(11) }
-		.particle_spark { f32(6.00051) }
-		.particle_jet { f32(6.25051) }
-		.particle_star { f32(6.50051) }
-		.particle_fragment { f32(6.75051) }
-		.tunnel { f32(63) }
-	}
-}

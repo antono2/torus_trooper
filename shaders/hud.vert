@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
+#include "hud_state.h"
 
 layout(push_constant) uniform Frame {
     float time;
@@ -212,11 +215,6 @@ const vec2 corners[6] = vec2[](
     vec2(-1, -1), vec2(1, -1), vec2(1, 1),
     vec2(-1, -1), vec2(1, 1), vec2(-1, 1)
 );
-const vec3 ui_label_color = vec3(0.82, 0.90, 0.94);
-const vec3 ui_value_color = vec3(0.94, 0.98, 1.00);
-const vec3 ui_active_color = vec3(0.42, 0.90, 1.00);
-const vec3 ui_muted_color = vec3(0.52, 0.62, 0.68);
-const vec3 ui_warning_color = vec3(1.00, 0.34, 0.20);
 const int title_wordmark_codes[13] = int[](
     20, 15, 18, 21, 19, 0, 20, 18, 15, 15, 16, 5, 18
 );
@@ -425,7 +423,7 @@ float title_detail_label_y(int grade, int row) {
 }
 
 int title_footer_row_count() {
-    return (frame.state & 16) != 0 ? 5 : 4;
+    return (frame.state & TT_HUD_GOD_MODE) != 0 ? 5 : 4;
 }
 
 float title_footer_row_y(int row) {
@@ -438,7 +436,7 @@ float title_volume_digit_y() {
 }
 
 int title_footer_row_for_group(int group) {
-    bool tune_visible = (frame.state & 16) != 0;
+    bool tune_visible = (frame.state & TT_HUD_GOD_MODE) != 0;
     if (group == 12) return 0;
     if (group == 16) return 1;
     if (group == 15) return 2;
@@ -525,8 +523,8 @@ float title_wordmark_origin_x(float pixel_height) {
 }
 
 void draw_title_mask_vertex() {
-    if ((frame.state & 4) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -539,7 +537,7 @@ void draw_title_mask_vertex() {
             vec2(0.32, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
             vec2(0.32, -1.0), vec2(1.0, 1.0), vec2(0.32, 1.0)
         );
-        glyph_color = vec3(0.0);
+        glyph_color = color_black;
         glyph_alpha = 1.0;
         gl_Position = vec4(panel_corners[corner], 0.0, 1.0);
         return;
@@ -568,14 +566,14 @@ void draw_title_mask_vertex() {
         );
     }
     const int corner_index[6] = int[](0, 1, 2, 0, 2, 3);
-    glyph_color = vec3(0.0);
+    glyph_color = color_black;
     glyph_alpha = 1.0;
     gl_Position = vec4(project_title_point(points[corner_index[corner]]), 0.0, 1.0);
 }
 
 void draw_title_torus_vertex() {
-    if ((frame.state & 4) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -605,8 +603,8 @@ void draw_title_torus_vertex() {
 }
 
 void draw_title_wordmark_vertex() {
-    if ((frame.state & 4) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -631,7 +629,7 @@ void draw_title_wordmark_vertex() {
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
     float pulse = 0.88 + sin(frame.time * 1.3 + float(character) * 0.24) * 0.12;
-    glyph_color = mix(vec3(0.35, 0.85, 1.0), vec3(0.80, 0.62, 1.0),
+    glyph_color = mix(color_title_sky_blue, color_title_lavender,
                       float(character) / float(title_wordmark_characters - 1)) * pulse;
     gl_Position = vec4(position, 0.0, 1.0);
 }
@@ -641,14 +639,14 @@ vec2 title_grade_center(int grade) {
 }
 
 vec3 title_grade_color(int grade) {
-    if (grade == 0) return vec3(0.35, 0.85, 1.0);
-    if (grade == 1) return vec3(1.0, 0.66, 0.24);
-    return vec3(1.0, 0.38, 0.82);
+    if (grade == 0) return color_title_sky_blue;
+    if (grade == 1) return color_hard_amber;
+    return color_extreme_pink;
 }
 
 void draw_title_grade_ring_vertex() {
-    if ((frame.state & 4) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -682,8 +680,8 @@ void draw_title_grade_ring_vertex() {
 }
 
 void draw_title_grade_label_vertex() {
-    if ((frame.state & 4) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -746,22 +744,22 @@ void draw_title_grade_label_vertex() {
                || (group == 15 && frame.remaining_time_ms == 5)
                || (group == 14 && frame.remaining_time_ms == 6)
                || (group == 16 && frame.remaining_time_ms == 7);
-    glyph_color = menu_active && (grade_row <= 1 || grade < 0) ? ui_value_color
-                : grade_row == 0 ? ui_label_color
-                : grade >= 0 && grade_row > 1 ? ui_muted_color : ui_label_color;
-    if (group == 15 && (frame.state & 16) == 0) position = vec2(2.0);
+    glyph_color = menu_active && (grade_row <= 1 || grade < 0) ? color_ui_value_ice_white
+                : grade_row == 0 ? color_ui_label_blue_gray
+                : grade >= 0 && grade_row > 1 ? color_ui_muted_slate : color_ui_label_blue_gray;
+    if (group == 15 && (frame.state & TT_HUD_GOD_MODE) == 0) position = vec2(2.0);
     gl_Position = vec4(position, 0.0, 1.0);
 }
 
 void draw_gameplay_overlay_vertex() {
-    bool game_over = (frame.state & 2) != 0;
-    bool paused = (frame.state & 1) != 0 && !game_over;
+    bool game_over = (frame.state & TT_HUD_GAME_OVER) != 0;
+    bool paused = (frame.state & TT_HUD_PAUSED) != 0 && !game_over;
     // Bit 5 is driven from wall time, which continues while the simulation and
     // its presentation clock are paused. This retains clean screenshot gaps
     // without ever freezing PAUSE indefinitely in its invisible phase.
-    bool pause_visible = (frame.state & 32) != 0;
+    bool pause_visible = (frame.state & TT_HUD_PAUSE_OVERLAY) != 0;
     if (!game_over && (!paused || !pause_visible)) {
-        glyph_color = vec3(0.0);
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -788,14 +786,14 @@ void draw_gameplay_overlay_vertex() {
     );
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
-    glyph_color = game_over ? vec3(1.0, 0.22, 0.12) : vec3(0.45, 0.90, 1.0);
+    glyph_color = game_over ? color_game_over_red : color_pause_cyan;
     ignore_transition = 1.0;
     gl_Position = vec4(position, 0.0, 1.0);
 }
 
 void draw_next_extend_vertex() {
-    if ((frame.state & 4) != 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) != 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -824,7 +822,7 @@ void draw_next_extend_vertex() {
                            gameplay_top_digit_y() + gameplay_right_row_step());
         vec2 position = anchor + center + corners[corner] * half_size;
         if (!enabled) position = vec2(2.0);
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
         gl_Position = vec4(position, 0.0, 1.0);
         return;
     }
@@ -852,8 +850,8 @@ int time_change_row(int character, int row, int seconds) {
 void draw_time_change_vertex() {
     bool visible = frame.time_change_ticks >= 0 &&
                    frame.time_change_ticks % 64 > 32;
-    if (!visible || (frame.state & 6) != 0) {
-        glyph_color = vec3(0.0);
+    if (!visible || (frame.state & (TT_HUD_TITLE | TT_HUD_GAME_OVER)) != 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -878,14 +876,14 @@ void draw_time_change_vertex() {
     );
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
-    glyph_color = frame.time_change_seconds < 0 ? vec3(1.0, 0.26, 0.16)
-                                                : vec3(0.42, 1.0, 0.62);
+    glyph_color = frame.time_change_seconds < 0 ? color_time_penalty_red
+                                                : color_time_bonus_green;
     gl_Position = vec4(position, 0.0, 1.0);
 }
 
 void draw_gameplay_label_vertex() {
-    if ((frame.state & 4) != 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) != 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -928,13 +926,13 @@ void draw_gameplay_label_vertex() {
     );
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
-    glyph_color = ui_label_color;
+    glyph_color = color_ui_label_blue_gray;
     gl_Position = vec4(position, 0.0, 1.0);
 }
 
 void draw_fps_vertex() {
-    if ((frame.state & 4) != 0 || (frame.state & 256) == 0) {
-        glyph_color = vec3(0.0);
+    if ((frame.state & TT_HUD_TITLE) != 0 || (frame.state & TT_HUD_FPS_VISIBLE) == 0) {
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -945,7 +943,7 @@ void draw_fps_vertex() {
     int character_pixel = pixel % 35;
     int row = character_pixel / 5;
     int column = character_pixel % 5;
-    int fps = (frame.state >> 10) & 1023;
+    int fps = (frame.state >> TT_HUD_FPS_SHIFT) & TT_HUD_FPS_MASK;
     int code = character < 4 ? fps_label_codes[character]
              : 27 + decimal_digit(fps, 6 - character);
     bool leading_zero = (character == 4 && fps < 100) ||
@@ -963,7 +961,7 @@ void draw_fps_vertex() {
     );
     vec2 position = font_dot_position(cell, pixel_height, pixel_corners[corner]);
     if (!enabled) position = vec2(2.0);
-    glyph_color = character < 4 ? ui_label_color : ui_value_color;
+    glyph_color = character < 4 ? color_ui_label_blue_gray : color_ui_value_ice_white;
     gl_Position = vec4(position, 0.0, 1.0);
 }
 
@@ -1101,11 +1099,11 @@ int settings_glyph_code(int line, int column) {
 }
 
 void draw_help_vertex() {
-    bool settings_visible = (frame.state & 64) != 0;
-    bool visible = (frame.state & 4) != 0
+    bool settings_visible = (frame.state & TT_HUD_SETTINGS) != 0;
+    bool visible = (frame.state & TT_HUD_TITLE) != 0
         && (frame.remaining_time_ms == 4 || settings_visible);
     if (!visible) {
-        glyph_color = vec3(0.0);
+        glyph_color = color_black;
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
         return;
     }
@@ -1117,7 +1115,7 @@ void draw_help_vertex() {
             vec2(-0.96, -0.78), vec2(0.28, -0.78), vec2(0.28, 0.94),
             vec2(-0.96, -0.78), vec2(0.28, 0.94), vec2(-0.96, 0.94)
         );
-        glyph_color = vec3(0.008, 0.012, 0.03);
+        glyph_color = color_background_navy;
         glyph_alpha = 1.0;
         gl_Position = settings_visible && vertex < 6
             ? vec4(panel_corners[corner], 0.0, 1.0)
@@ -1154,10 +1152,10 @@ void draw_help_vertex() {
     if (!enabled) position = vec2(2.0);
     int selected_line = 2 + frame.time_change_seconds * 2;
     glyph_color = line == 0 || (settings_visible && line == selected_line)
-        ? ui_value_color : ui_label_color;
+        ? color_ui_value_ice_white : color_ui_label_blue_gray;
 	if (settings_visible && line == 21 && text_column >= 3 && text_column < 23
 		&& (text_column - 2) * 5 <= frame.rear_track_blend_percent)
-		glyph_color = ui_value_color;
+		glyph_color = color_ui_value_ice_white;
     glyph_alpha = 0.96;
     gl_Position = vec4(position, 0.0, 1.0);
 }
@@ -1180,12 +1178,12 @@ int title_best_level_pair(int grade) {
 
 // Geometry is drawn once behind menu text, outside the font-outline passes.
 void draw_menu_selection_vertex() {
-    if ((frame.state & 4) == 0) {
+    if ((frame.state & TT_HUD_TITLE) == 0) {
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
-        glyph_color = vec3(0.0);
+        glyph_color = color_black;
         return;
     }
-    bool settings = (frame.state & 64) != 0;
+    bool settings = (frame.state & TT_HUD_SETTINGS) != 0;
     float left = 0.39;
     float right = 0.985;
     float top;
@@ -1217,14 +1215,14 @@ void draw_menu_selection_vertex() {
     float horizontal = thickness / frame.aspect;
     vec2 start = vec2(left, top);
     vec2 end = vec2(right, bottom);
-    glyph_color = vec3(0.035, 0.10, 0.16);
+    glyph_color = color_selection_dark_teal;
     glyph_alpha = 0.98;
     if (part == 1) { end.x = left + horizontal * 2.0; }
     if (part == 2) { end.y = top + thickness; }
     if (part == 3) { start.y = bottom - thickness; }
     if (part == 4) { start.x = right - horizontal; }
     if (part > 0) {
-        glyph_color = ui_active_color;
+        glyph_color = color_ui_active_cyan;
         glyph_alpha = 1.0;
     }
     vec2 quad[6] = vec2[](vec2(0,0), vec2(1,0), vec2(1,1),
@@ -1249,16 +1247,16 @@ void draw_replay_library_vertex() {
     vec2 quad[6] = vec2[](vec2(0,0), vec2(1,0), vec2(1,1),
                           vec2(0,0), vec2(1,1), vec2(0,1));
     if (vertex < 6) {
-        glyph_color = vec3(0.015, 0.025, 0.05);
+        glyph_color = color_replay_panel_navy;
         glyph_alpha = 0.98;
         vec2 position = quad[vertex] * 2.0 - 1.0;
         if (frame.remaining_time_ms >= 2) {
             float top = frame.time - 0.007;
             position = mix(vec2(-0.97, top), vec2(0.97, top + 0.074), quad[vertex]);
-            glyph_color = vec3(0.035, 0.10, 0.16);
+            glyph_color = color_selection_dark_teal;
             if (frame.remaining_time_ms == 3) {
                 position.x = -0.97 + quad[vertex].x * 0.008;
-                glyph_color = ui_active_color;
+                glyph_color = color_ui_active_cyan;
             }
             glyph_alpha = 1.0;
         }
@@ -1280,18 +1278,18 @@ void draw_replay_library_vertex() {
         * vec2(pitch / frame.aspect, pitch);
     if ((character_glyph_row(code, row) & (1 << (4 - column))) == 0)
         position = vec2(2);
-    glyph_color = frame.zone == 1 ? ui_value_color : ui_label_color;
-    if (frame.hits == 0) glyph_color = ui_value_color;
+    glyph_color = frame.zone == 1 ? color_ui_value_ice_white : color_ui_label_blue_gray;
+    if (frame.hits == 0) glyph_color = color_ui_value_ice_white;
     glyph_alpha = 1.0;
     gl_Position = vec4(position, 0, 1);
 }
 
 void main() {
     ignore_transition = 0.0;
-    if ((frame.state & 128) != 0) { draw_replay_library_vertex(); return; }
+    if ((frame.state & TT_HUD_REPLAY_LIBRARY) != 0) { draw_replay_library_vertex(); return; }
     // The source glyphs combine a half-alpha face with an opaque outline.
     // This single-pass font uses their average coverage during gameplay.
-    glyph_alpha = (frame.state & 4) != 0 ? 0.92 : 0.62;
+    glyph_alpha = (frame.state & TT_HUD_TITLE) != 0 ? 0.92 : 0.62;
     if (gl_VertexIndex >= menu_selection_offset) {
         draw_menu_selection_vertex();
         return;
@@ -1349,7 +1347,7 @@ void main() {
     float text_scale = responsive_text_scale();
     float spacing = 0.052 * text_scale / frame.aspect;
 
-    if ((frame.state & 4) != 0) {
+    if ((frame.state & TT_HUD_TITLE) != 0) {
         float title_spacing = title_digit_spacing();
         float title_start = title_detail_value_x() + title_digit_outer_half_width();
         if (glyph < 63) {
@@ -1377,12 +1375,12 @@ void main() {
             anchor = vec2(title_start + float(local_glyph) * title_spacing,
                           title_detail_digit_y(grade, field));
             bool active_level = field == 0 && frame.remaining_time_ms == grade;
-            glyph_color = active_level ? ui_active_color
-                        : field == 0 ? ui_value_color : ui_muted_color;
+            glyph_color = active_level ? color_ui_active_cyan
+                        : field == 0 ? color_ui_value_ice_white : color_ui_muted_slate;
         } else {
             digit = 0;
             anchor = vec2(2.0);
-            glyph_color = vec3(0.0);
+            glyph_color = color_black;
         }
     } else if (glyph < 7) {
         digit = decimal_digit(frame.score, glyph);
@@ -1391,7 +1389,7 @@ void main() {
             : gameplay_row_value_anchor(5);
         anchor = vec2(value_anchor - float(glyph) * spacing,
                       gameplay_top_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else if (glyph < 14) {
         int time_ms = max(frame.remaining_time_ms, 0);
         int place = glyph - 7;
@@ -1406,46 +1404,46 @@ void main() {
                           (place >= 5 ? 0.014 : 0.0);
         anchor = vec2(0.14 - float(place) * spacing - group_gap * text_scale / frame.aspect,
                       gameplay_top_digit_y());
-        glyph_color = time_ms <= 15000 ? ui_warning_color : ui_value_color;
+        glyph_color = time_ms <= 15000 ? color_ui_warning_orange : color_ui_value_ice_white;
     } else if (glyph < 16) {
         digit = decimal_digit(frame.zone, glyph - 14);
         float value_anchor = gameplay_layout_stacks()
             ? gameplay_stacked_value_anchor(-0.94, 2) : -0.75;
         anchor = vec2(value_anchor - float(glyph - 14) * spacing,
                       gameplay_bottom_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else if (glyph < 18) {
         digit = decimal_digit(frame.hits, glyph - 16);
         float value_anchor = gameplay_layout_stacks()
             ? gameplay_stacked_value_anchor(0.68, 2) : 0.94;
         anchor = vec2(value_anchor - float(glyph - 16) * spacing,
                       gameplay_bottom_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else if (glyph < 23) {
         digit = decimal_digit(frame.speed, glyph - 18);
         float value_anchor = gameplay_layout_stacks()
             ? gameplay_stacked_value_anchor(0.50, 5) : 0.45;
         anchor = vec2(value_anchor - float(glyph - 18) * spacing,
                       gameplay_speed_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else if (glyph < 26) {
         digit = decimal_digit(frame.rank, glyph - 23);
         float value_anchor = gameplay_layout_stacks()
             ? gameplay_stacked_value_anchor(-0.68, 3) : -0.35;
         anchor = vec2(value_anchor - float(glyph - 23) * spacing,
                       gameplay_bottom_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else if (glyph < 29) {
         digit = decimal_digit(frame.rank_remaining, glyph - 26);
         float value_anchor = gameplay_layout_stacks()
             ? gameplay_stacked_value_anchor(-0.24, 3) : 0.08;
         anchor = vec2(value_anchor - float(glyph - 26) * spacing,
                       gameplay_bottom_digit_y());
-        glyph_color = ui_value_color;
+        glyph_color = color_ui_value_ice_white;
     } else {
         digit = 0;
         anchor = vec2(2.0);
-        glyph_color = vec3(0.0);
+        glyph_color = color_black;
     }
 
     bool enabled = (digit_masks[digit] & (1 << segment)) != 0;
@@ -1454,7 +1452,7 @@ void main() {
         vec2(-1, 0.5), vec2(-1, -0.5), vec2(0, 0)
     );
     bool horizontal = segment == 0 || segment == 3 || segment == 6;
-    bool title_mode = (frame.state & 4) != 0;
+    bool title_mode = (frame.state & TT_HUD_TITLE) != 0;
     float digit_scale = title_mode ? title_text_scale() : text_scale;
     float long_half = title_mode ? 0.0135 : 0.018;
     float short_half = title_mode ? 0.003 : 0.0035;

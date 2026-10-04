@@ -13,7 +13,7 @@ repository root as the working directory.
 - [Build and run](#build-and-run)
 - [Advanced settings and controls](#advanced-settings-and-controls)
 - [Saved data and replays](#saved-data-and-replays)
-- [Development tools and runtime](#development-tools-and-runtime)
+- [Development tools and runtime](#development-tools-and-runtime), including the [code and tuning map](code-map.md)
 - [Verification](#verification)
 - [Packaging](#packaging)
 - [License](#license)
@@ -301,8 +301,8 @@ distance. Exported recordings normally go in the adjacent `replays` directory.
 
 High scores and completed runs are saved when game over begins. Opening the menu
 suspends a live run for later resume; replacing that run or quitting saves its
-recording. Game-over return input unlocks after one second, and inactivity
-returns to the title after twenty seconds.
+recording. Game-over return input unlocks after 60 presented frames, and inactivity
+returns to the title after 1,200 frames (one and twenty seconds at 60 FPS).
 
 ### Replay files and playback
 
@@ -324,6 +324,10 @@ view, Up shows the HUD and Down hides it. The title-screen attract replay is
 silent and uses the cinematic camera.
 
 ## Development tools and runtime
+
+For source changes, the [code and tuning map](code-map.md) lists the files for
+gameplay constants, display defaults, colors and input encoding, with units and
+examples of what changing each value does.
 
 ### Object sizes and model previews
 

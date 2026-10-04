@@ -204,23 +204,6 @@ fn enemy_render_kind_with_damage(kind int, shape_seed int, damaged bool) f32 {
 	return f32(3) + f32(tier) * enemy_shape_tier_stride + f32(code) * enemy_shape_code_scale
 }
 
-struct EnemyRenderCode {
-	tier    int
-	seed    int
-	damaged bool
-}
-
-fn decode_enemy_render_kind(value f32) EnemyRenderCode {
-	tier := int_max(0, int_min(2, int((value - 3) / enemy_shape_tier_stride)))
-	base := f32(3) + f32(tier) * enemy_shape_tier_stride
-	packed := int((value - base) / enemy_shape_code_scale + 0.5)
-	return EnemyRenderCode{
-		tier: tier
-		seed: packed % enemy_damaged_code_offset
-		damaged: packed >= enemy_damaged_code_offset
-	}
-}
-
 fn particle_render_kind(particle Particle) f32 {
 	life_ratio := if particle.initial_life > 0 {
 		clamp_f32(f32(particle.life) / f32(particle.initial_life), 0, 1)
@@ -250,13 +233,6 @@ fn particle_render_heading(particle Particle, reflected bool) f32 {
 	return heading + if reflected { particle_reflection_heading_offset } else { f32(0) }
 }
 
-struct ParticleFragmentCode {
-	spin_bin           int
-	secondary_spin_bin int
-	width_bin          int
-	height_bin         int
-}
-
 fn particle_fragment_payload(particle Particle) int {
 	spin_bin := particle_fragment_angle_bin(particle.spin)
 	secondary_spin_bin := particle_fragment_angle_bin(particle.secondary_spin)
@@ -269,15 +245,6 @@ fn particle_fragment_angle_bin(angle f32) int {
 	return int(wrap_angle(angle) / f32(math.pi * 2) * fragment_angle_bins + 0.5) % fragment_angle_bins
 }
 
-fn decode_particle_fragment_payload(payload int) ParticleFragmentCode {
-	return ParticleFragmentCode{
-		spin_bin: payload & 63
-		secondary_spin_bin: (payload >> 6) & 63
-		width_bin: (payload >> 12) & 63
-		height_bin: (payload >> 18) & 63
-	}
-}
-
 fn multiplier_popup_payload(popup MultiplierPopup) f32 {
 	size_marker := if popup.large_label { multiplier_large_label_offset } else { f32(0) }
 	return f32(popup.multiplier) + size_marker + popup.alpha
@@ -285,10 +252,6 @@ fn multiplier_popup_payload(popup MultiplierPopup) f32 {
 
 fn multiplier_render_kind(slot int) f32 {
 	return 20 + f32(slot) * multiplier_list_slot_kind_scale
-}
-
-fn multiplier_render_slot(kind f32) int {
-	return int(math.round((kind - 20) / multiplier_list_slot_kind_scale))
 }
 
 fn enemy_surface_clearance(kind int) f32 {
@@ -359,7 +322,7 @@ pub fn (simulation &Simulation) render_entity_soa_for_camera_with_scales(camera_
 		rotation_ws: []f32{cap: 1024}
 	}
 	player_clearance := player_ship_surface_clearance(scales.player)
-	ship_hidden := simulation.ship.lifecycle_counter < -228
+	ship_hidden := simulation.ship.lifecycle_counter < -ship_spawn_invulnerability_ticks
 		|| (simulation.ship.lifecycle_counter < 0
 			&& (-simulation.ship.lifecycle_counter % 32) < 16)
 	if !ship_hidden {

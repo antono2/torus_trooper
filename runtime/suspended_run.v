@@ -42,11 +42,15 @@ fn controller_menu_input_mask(mask u32, title_mode bool, nested_menu bool,
 		return mask
 	}
 	if controller_start && !controller_back && !nested_menu && !can_resume {
-		return (mask & ~u32(256 | 32)) | u32(16)
+		return (mask & ~(input_back_bit | sim.input_charge_bit)) | sim.input_fire_bit
 	}
 	if !controller_back {
 		return mask
 	}
 	// Cancel wins over confirm/charge, and must not open a replay at the root.
-	return (mask & ~u32(16 | 32 | 128)) | if nested_menu || can_resume { u32(256) } else { u32(0) }
+	return (mask & ~(sim.input_fire_bit | sim.input_charge_bit | input_restart_bit)) | if nested_menu || can_resume {
+		input_back_bit
+	} else {
+		u32(0)
+	}
 }

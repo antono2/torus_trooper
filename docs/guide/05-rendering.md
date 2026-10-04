@@ -35,9 +35,9 @@ flowchart LR
 ```
 
 The course is drawn through separate vertex types in
-[`course.v`](../../sim/course.v#L349): wire geometry and filled panels. Ship hulls
+[`course.v`](../../sim/course.v#L318): wire geometry and filled panels. Ship hulls
 also have a separate procedural mesh path in
-[`ship_mesh.v`](../../sim/ship_mesh.v#L719). Seeded ship structure definitions in
+[`ship_mesh.v`](../../sim/ship_mesh.v#L689). Seeded ship structure definitions in
 [`ship_geometry.v`](../../sim/ship_geometry.v#L25) are also used for collision
 dimensions and exhaust placement. That relationship keeps a generated
 silhouette and its gameplay footprint in agreement.
@@ -50,7 +50,7 @@ The proxy is deliberately not the rendered outline. Both are derived from the
 seeded ship definition, so an imported replacement would need equivalent
 collision and attachment data. In play, `--debug-view=collisions,exhaust`
 shows these proxies over the scene without changing the simulation.
-[`App.run`](../../runtime/app.v#L1289) chooses the visible view and passes the
+[`App.run`](../../runtime/app.v#L1274) chooses the visible view and passes the
 resulting arrays to `tt_platform_set_bullets`, `tt_platform_set_tunnel`,
 `tt_platform_set_tunnel_fill`, and `tt_platform_set_ship_mesh`. `set_bullets` accepts the general instance stream, including shots and effects.
 The C bridge uploads those arrays and the [`shaders/`](../../shaders) directory
@@ -61,7 +61,7 @@ contains their rendering programs.
 The fixed-tick model records changes in ship position and angle. Between two
 ticks, `App.run` computes a fraction from the unconsumed accumulator time and
 uses `presentation_course_position`, `presentation_eye_angle`, and related
-helpers in [`simulation.v`](../../sim/simulation.v#L2261). It changes a presentation
+helpers in [`simulation.v`](../../sim/simulation.v#L2271). It changes a presentation
 copy of the ship before extracting geometry. Collisions, spawning, scoring,
 and replay input indexing still use the discrete simulation state.
 

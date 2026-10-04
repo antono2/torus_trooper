@@ -198,16 +198,16 @@ pub:
 pub struct AppConfig {
 pub:
 	title                    string = 'Torus Trooper'
-	width                    int    = 1280
-	height                   int    = 720
+	width                    int    = default_window_width
+	height                   int    = default_window_height
 	audio_asset_root         string = '.'
-	audio_volume             f32    = 0.35
+	audio_volume             f32    = default_volume
 	audio_volume_explicit    bool
-	antialiasing_samples     int = 8
+	antialiasing_samples     int = default_antialiasing_samples
 	antialiasing_explicit    bool
-	near_blur_percent        int = 80
+	near_blur_percent        int = default_near_blur_percent
 	near_blur_explicit       bool
-	near_fade_percent        int = 65
+	near_fade_percent        int = default_near_fade_percent
 	near_fade_explicit       bool
 	rear_track_blend_percent int = default_rear_track_blend_percent
 	rear_track_explicit      bool
@@ -221,8 +221,8 @@ pub:
 	fps_limit_explicit       bool
 	audio_enabled            bool        = true
 	key_bindings             KeyBindings = KeyBindings{}
-	brightness               f32         = 1
-	luminosity               f32         = 0.8
+	brightness               f32         = default_brightness
+	luminosity               f32         = default_luminosity
 	grade                    sim.Grade
 	starting_level           int = 1
 	reverse_buttons          bool
@@ -270,21 +270,6 @@ enum TitleSettingsItem {
 	back
 }
 
-const minimum_track_draw_distance = 0
-const maximum_track_draw_distance = 999
-const default_track_draw_distance = 75
-const default_wire_draw_distance = 120
-const default_border_draw_distance = 120
-const default_rear_track_blend_percent = 10
-const fps_limit_display = -1
-const fps_limit_unlocked = 0
-
-// The title HUD reserves three digits for starting levels. God mode exposes
-// that complete range without changing normal progression unlocks.
-const god_mode_max_start_level = 999
-
-const title_volume_preview_duration_ms = i64(3000)
-
 @[heap]
 pub struct App {
 mut:
@@ -307,8 +292,8 @@ mut:
 	compute_session          &sim.ComputeSession = unsafe { nil }
 	vulkan_memory            &VulkanMemory       = unsafe { nil }
 	antialiasing_samples     int                 = 1
-	near_blur_percent        int                 = 80
-	near_fade_percent        int                 = 65
+	near_blur_percent        int                 = default_near_blur_percent
+	near_fade_percent        int                 = default_near_fade_percent
 	rear_track_blend_percent int                 = default_rear_track_blend_percent
 	track_draw_distance      int                 = default_track_draw_distance
 	wire_draw_distance       int                 = default_wire_draw_distance
@@ -548,7 +533,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 	mut title_key_repeat := 0
 	mut settings_adjust_pending := 0
 	mut action_pressed := true
-	mut transition_frames := 30
+	mut transition_frames := menu_transition_frames
 	mut game_over_frames := 0
 	mut replay_game_over_ticks := 0
 	mut result_recorded := false
@@ -608,7 +593,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			suspended_run.valid, C.tt_platform_controller_back_pressed(app.platform),
 			C.tt_platform_controller_start_pressed(app.platform))
 		if replay_controls_blocked {
-			if input_mask & 511 == 0 {
+			if input_mask & input_gameplay_and_menu_bits == 0 {
 				replay_controls_blocked = false
 			}
 			input_mask = 0
@@ -690,7 +675,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			&& (title_menu_item == .help || app.title_settings_open || replay_library.open)
 		menu_input_mask := title_menu_input_mask(input_mask, title_mode, title_menu_item)
 		menu_input := input_state(menu_input_mask, app.reverse_buttons, false)
-		start_down := menu_input.fire || input_mask & 128 != 0
+		start_down := menu_input.fire || input_mask & input_restart_bit != 0
 		replay_down := menu_input.brake
 		action_down := start_down || replay_down
 		direction_down := menu_input.left || menu_input.right || menu_input.up || menu_input.down
@@ -884,7 +869,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				simulation_config = with_compute_backend(gameplay_config_with_seed(app.grade, app.starting_level, next_game_seed(mut run_seed_source)), app.compute_backend)
 				simulation = app.new_simulation(simulation_config)
 				title_mode = false
-				transition_frames = 30
+				transition_frames = menu_transition_frames
 				replay_controls_blocked = C.tt_platform_controller_start_pressed(app.platform)
 				replay_mode = false
 				attract_replay = false
@@ -919,8 +904,8 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				}
 			}
 		}
-		volume_down := input_mask & 512 != 0
-		volume_up := input_mask & 1024 != 0
+		volume_down := input_mask & input_volume_down_bit != 0
+		volume_up := input_mask & input_volume_up_bit != 0
 		volume_hotkey_down := volume_down || volume_up
 		if !title_mode && !calibration_mode && volume_hotkey_down && !volume_hotkey_pressed
 			&& volume_down != volume_up {
@@ -961,7 +946,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		}
 		direction_pressed = direction_down
 		action_pressed = action_down
-		pause_down := input_mask & 64 != 0
+		pause_down := input_mask & input_pause_bit != 0
 		if !title_mode && !calibration_mode && pause_down && !pause_pressed && !simulation.game_over {
 			paused = !paused
 			C.tt_platform_set_paused(app.platform, paused)
@@ -971,8 +956,8 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 			}
 		}
 		pause_pressed = pause_down
-		restart_down := input_mask & 128 != 0
-		escape_down := input_mask & 256 != 0
+		restart_down := input_mask & input_restart_bit != 0
+		escape_down := input_mask & input_back_bit != 0
 		escape_edge := escape_down && !escape_pressed
 		mut resumed_run := false
 		if calibration_mode && escape_edge {
@@ -1023,7 +1008,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				attract_replay = false
 				result_recorded = false
 				accumulator = 0
-				transition_frames = 30
+				transition_frames = menu_transition_frames
 				replay_controls_blocked = true
 				input_mask = 0
 				C.tt_platform_set_paused(app.platform, paused)
@@ -1055,7 +1040,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 				app.save_player_data_if_enabled(player_data)
 			}
 			title_mode = true
-			transition_frames = 30
+			transition_frames = menu_transition_frames
 			game_over_frames = 0
 			accumulator = 0
 			paused = false
@@ -1365,7 +1350,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		}
 		C.tt_platform_set_ship_material_seed(app.platform, ship_material_key(simulation.config.random_seed, simulation.level, simulation.zone))
 		tunnel_color := if calibration_mode {
-			sim.TunnelColor{ r: 0.65, g: 0.95, b: 1.0 }
+			sim.calibration_ice_cyan
 		} else {
 			simulation.tunnel_line_color()
 		}
@@ -1428,7 +1413,7 @@ pub fn (mut app App) run(test_effects bool, test_object_tuning bool, direct_tuni
 		C.tt_platform_set_replay_view_ratio(app.platform, replay_ratio)
 		if calibration_mode {
 			C.tt_platform_set_hud_visible(app.platform, false)
-		} else if title_mode && replay_change_frames > 0 && replay_change_frames < 30 {
+		} else if title_mode && replay_change_frames > 0 && replay_change_frames < replay_transition_frames {
 			C.tt_platform_set_hud_visible(app.platform, false)
 		} else if title_replay_uses_gameplay_status(title_mode, replay_mode, replay_change_frames) {
 			// Switch the state bits before revealing the full-window replay HUD.
@@ -1491,7 +1476,7 @@ fn (app &App) set_title_status(data PlayerData, start_levels []int, has_replay b
 }
 
 fn (app &App) set_gameplay_status(simulation &sim.Simulation, paused bool) {
-	C.tt_platform_set_status(app.platform, simulation.score, simulation.remaining_time_ms, simulation.ship.hits, int(simulation.level), int(simulation.ship.speed * 2500), simulation.stage.rank, int_max(simulation.stage.zone_end_rank - simulation.stage.rank, 0), simulation.next_extend_score, simulation.time_change_ticks, simulation.time_change_seconds, simulation.game_over, paused, app.god_mode)
+	C.tt_platform_set_status(app.platform, simulation.score, simulation.remaining_time_ms, simulation.ship.hits, int(simulation.level), int(simulation.ship.speed * displayed_speed_scale), simulation.stage.rank, int_max(simulation.stage.zone_end_rank - simulation.stage.rank, 0), simulation.next_extend_score, simulation.time_change_ticks, simulation.time_change_seconds, simulation.game_over, paused, app.god_mode)
 }
 
 fn gameplay_config(grade sim.Grade, starting_level int) sim.SimulationConfig {
@@ -1532,7 +1517,7 @@ fn gameplay_config_with_seed(grade sim.Grade, starting_level int, random_seed u6
 		enemy_fire_interval:   75
 		stage_progression:     true
 		procedural_course:     true
-		run_time_ms:           120_000
+		run_time_ms:           sim.default_run_time_ms
 		release_before_action: true
 		barrage:               sim.Barrage{ name: 'enemy_owned_fire', emitters: [] }
 	}
@@ -1573,11 +1558,6 @@ fn (app &App) new_replay_simulation(replay sim.Replay) sim.Simulation {
 	simulation.attach_compute_session(app.compute_session)
 	simulation.god_mode = replay.god_mode
 	return simulation
-}
-
-fn adjacent_grade(grade sim.Grade, delta int) sim.Grade {
-	value := (int(grade) + delta + 3) % 3
-	return unsafe { sim.Grade(value) }
 }
 
 fn title_menu_item_for_grade(grade sim.Grade) TitleMenuItem {
@@ -1671,14 +1651,6 @@ const title_help_page_count = 3
 
 fn cycled_help_page(page int, delta int) int {
 	return (page + delta % title_help_page_count + title_help_page_count) % title_help_page_count
-}
-
-fn cycled_level(level int, max_level int, delta int) int {
-	maximum := int_max(max_level, 1)
-	if delta < 0 {
-		return if level <= 1 { maximum } else { level - 1 }
-	}
-	return if level >= maximum { 1 } else { level + 1 }
 }
 
 fn title_repeat_movement(was_pressed bool, repeat_ticks int) int {
@@ -1840,8 +1812,8 @@ fn (mut app App) apply_fps_limit(limit int, mut data PlayerData) {
 }
 
 fn presentation_fade(transition_frames int, game_over_frames int) f32 {
-	transition := f32(int_max(transition_frames, 0)) / 30.0
-	game_over := f32(int_min(int_max(game_over_frames, 0), 120)) / 120.0 * 0.65
+	transition := f32(int_max(transition_frames, 0)) / f32(menu_transition_frames)
+	game_over := f32(int_min(int_max(game_over_frames, 0), game_over_fade_frames)) / f32(game_over_fade_frames) * game_over_fade_opacity
 	return if transition > game_over { transition } else { game_over }
 }
 
@@ -1866,17 +1838,9 @@ fn title_replay_toggle_allowed(menu_item TitleMenuItem, has_replay bool) bool {
 	return menu_item !in [.settings, .help, .tune, .replays, .exit] && has_replay
 }
 
-fn title_menu_input_mask(input_mask u32, title_mode bool, menu_item TitleMenuItem) u32 {
-	return if title_mode && menu_item in [.settings, .help, .replays] {
-		input_mask & ~u32(32)
-	} else {
-		input_mask
-	}
-}
-
 fn stepped_title_replay_transition(frames int, replay_mode bool) int {
 	if replay_mode {
-		return int_min(frames + 1, 30)
+		return int_min(frames + 1, replay_transition_frames)
 	}
 	return int_max(frames - 1, 0)
 }
@@ -1885,7 +1849,7 @@ fn title_replay_view_ratio(title_mode bool, has_replay bool, frames int) f32 {
 	if !title_mode || !has_replay {
 		return 1
 	}
-	return f32(int_min(int_max(frames, 0), 30)) / 30.0
+	return f32(int_min(int_max(frames, 0), replay_transition_frames)) / f32(replay_transition_frames)
 }
 
 fn camera_depth_for_render(cinematic bool, replay_depth f32, ship_relative_depth f32) f32 {
@@ -1913,11 +1877,11 @@ fn should_render_world(title_mode bool, replay_mode bool, attract_replay bool,
 fn should_return_to_title(title_mode bool, game_over bool, restart_down bool,
 	restart_pressed bool, game_over_frames int) bool {
 	return !title_mode && game_over
-		&& (game_over_frames > 1200 || (game_over_frames > 60 && restart_down && !restart_pressed))
+		&& (game_over_frames > game_over_auto_return_frames || (game_over_frames > game_over_restart_delay_frames && restart_down && !restart_pressed))
 }
 
 fn should_refresh_gameplay_status(paused bool, game_over bool, tick int) bool {
-	return paused || game_over || tick % 10 == 0
+	return paused || game_over || tick % gameplay_status_interval_ticks == 0
 }
 
 fn replay_uses_cinematic_camera(replay_mode bool, attract_replay bool, cinematic_selected bool) bool {
@@ -1926,7 +1890,7 @@ fn replay_uses_cinematic_camera(replay_mode bool, attract_replay bool, cinematic
 
 fn title_replay_uses_gameplay_status(title_mode bool, replay_mode bool,
 	replay_change_frames int) bool {
-	return title_mode && replay_mode && replay_change_frames == 30
+	return title_mode && replay_mode && replay_change_frames == replay_transition_frames
 }
 
 fn replay_input_ended(input_index int, input_count int) bool {
@@ -1934,20 +1898,7 @@ fn replay_input_ended(input_index int, input_count int) bool {
 }
 
 fn should_restart_title_replay(game_over_ticks int) bool {
-	return game_over_ticks > 120
-}
-
-fn input_state(input_mask u32, reverse_buttons bool, force_brake bool) sim.InputState {
-	primary := input_mask & 16 != 0
-	secondary := input_mask & 32 != 0
-	return sim.InputState{
-		left:  input_mask & 1 != 0
-		right: input_mask & 2 != 0
-		up:    input_mask & 4 != 0
-		down:  input_mask & 8 != 0
-		fire:  if reverse_buttons { secondary } else { primary }
-		brake: (if reverse_buttons { primary } else { secondary }) || force_brake
-	}
+	return game_over_ticks > attract_replay_restart_delay_ticks
 }
 
 fn inject_test_event(mut simulation sim.Simulation) {
@@ -2018,10 +1969,18 @@ fn inject_destroyed_enemy(mut simulation sim.Simulation, kind int, charged bool,
 	}
 	health := if kind == 2 {
 		30
-	} else if kind == 1 { 10 } else { 1 }
+	} else if kind == 1 {
+		10
+	} else {
+		1
+	}
 	score := if kind == 2 {
 		2000
-	} else if kind == 1 { 500 } else { 100 }
+	} else if kind == 1 {
+		500
+	} else {
+		100
+	}
 	position := sim.Vec2{
 		x: simulation.ship.angle
 		// Keep the scripted visual regression away from the ship and HUD so the
@@ -2159,7 +2118,7 @@ fn (mut app App) play_simulation_audio(previous SimulationAudioState, simulation
 		if shot.charge_ticks > previous.charge_ticks && (shot.charge_ticks - 1) % 52 == 0 {
 			app.audio.play_effect(.charge)
 		}
-	} else if previous.charging_shot >= 0 && previous.charge_ticks >= 23 {
+	} else if previous.charging_shot >= 0 && previous.charge_ticks >= sim.charged_shot_min_ticks {
 		app.audio.play_effect(.charge_shot)
 	}
 	if simulation.enemy_hits > previous.enemy_hits {

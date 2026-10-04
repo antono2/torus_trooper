@@ -59,6 +59,9 @@ replay, headless testing, and alternative presentation paths possible.
 
 ## Read by decision
 
+For a quick route to a particular setting or color, use the
+[code and tuning map](code-map.md).
+
 | Chapter | Design question | Main alternatives considered |
 | --- | --- | --- |
 | [1. System boundaries](guide/01-system-overview.md) | Where do input, time, state, and presentation belong? | Fixed-step and variable-step hosts; immediate and retained presentation. |

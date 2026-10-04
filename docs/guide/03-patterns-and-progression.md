@@ -14,7 +14,7 @@ apart lets tests ask
 whether a grade has the correct constants and whether the transition rules work
 for any grade.
 
-[`update_stage_spawning`](../../sim/simulation.v#L1046) decreases spawn distances by
+[`update_stage_spawning`](../../sim/simulation.v#L1056) decreases spawn distances by
 ship speed, selects the next enemy kind, and installs an enemy in a fixed pool.
 It uses the stage random stream and the current
 [`CourseProfile`](../../sim/course.v#L31) to place that enemy on a playable slice.
@@ -35,9 +35,9 @@ flowchart LR
 ```
 
 The course itself is generated once from a seed in
-[`generate_course`](../../sim/course.v#L191). Its slices hold width, radius, and
-turning information. [`slice_at`](../../sim/course.v#L318) wraps positions around
-the course; [`course_side`](../../sim/course.v#L329)
+[`generate_course`](../../sim/course.v#L160). Its slices hold width, radius, and
+turning information. [`slice_at`](../../sim/course.v#L287) wraps positions around
+the course; [`course_side`](../../sim/course.v#L298)
 checks whether an angle lies on the playable track. The same profile informs
 movement constraints and drawn tunnel geometry. Reusing one course definition
 prevents the collision boundary from drifting away from the visible track.
@@ -109,7 +109,7 @@ action. That pipeline costs tooling work, but makes large catalogs safer to
 edit and review.
 
 Course generation has the same decision shape. The seeded
-[`generate_course`](../../sim/course.v#L191) creates replayable variation from a
+[`generate_course`](../../sim/course.v#L160) creates replayable variation from a
 small rule set. An authored level can support deliberate pacing, landmarks,
 and bespoke encounters. A hybrid can generate a base track and place authored
 set pieces into validated slots. An asset-rich 3D game might choose authored

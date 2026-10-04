@@ -2331,30 +2331,30 @@ fn test_tunnel_palette_matches_expected_pairs_and_zone_cadence() {
 		barrage: Barrage{ emitters: [] }
 	})
 	initial := simulation.tunnel_line_color()
-	assert initial == TunnelColor{ r: 0.6, g: 0.4, b: 1 }
-	assert simulation.tunnel_poly_color() == TunnelColor{ r: 0.8, g: 0.5, b: 0.9 }
+	assert initial == RgbColor{ r: 0.6, g: 0.4, b: 1 }
+	assert simulation.tunnel_poly_color() == RgbColor{ r: 0.8, g: 0.5, b: 0.9 }
 	simulation.palette_transition_ticks = 0
 	zone_one := simulation.tunnel_line_color()
-	assert zone_one == TunnelColor{ r: 0.6, g: 0.7, b: 1 }
-	assert simulation.tunnel_poly_color() == TunnelColor{ r: 0.7, g: 0.9, b: 1 }
+	assert zone_one == RgbColor{ r: 0.6, g: 0.7, b: 1 }
+	assert simulation.tunnel_poly_color() == RgbColor{ r: 0.7, g: 0.9, b: 1 }
 	simulation.zone = 3
 	simulation.level = 2
 	zone_three := simulation.tunnel_line_color()
-	assert zone_three == TunnelColor{ r: 0.4, g: 0.8, b: 0.6 }
+	assert zone_three == RgbColor{ r: 0.4, g: 0.8, b: 0.6 }
 
 	mut later_start := new_simulation(SimulationConfig{
 		starting_level: 4
 		barrage: Barrage{ emitters: [] }
 	})
 	later_start.palette_transition_ticks = 0
-	assert later_start.tunnel_line_color() == TunnelColor{ r: 0.6, g: 0.6, b: 0.6 }
-	assert later_start.tunnel_poly_color() == TunnelColor{ r: 0.8, g: 0.8, b: 0.8 }
+	assert later_start.tunnel_line_color() == RgbColor{ r: 0.6, g: 0.6, b: 0.6 }
+	assert later_start.tunnel_poly_color() == RgbColor{ r: 0.8, g: 0.8, b: 0.8 }
 	later_start.zone = 2
 	later_start.level = 4.5
-	assert later_start.tunnel_line_color() == TunnelColor{ r: 0.6, g: 0.6, b: 0.6 }
+	assert later_start.tunnel_line_color() == RgbColor{ r: 0.6, g: 0.6, b: 0.6 }
 	later_start.zone = 3
 	later_start.level = 5
-	assert later_start.tunnel_line_color() == TunnelColor{ r: 0.4, g: 0.7, b: 0.7 }
+	assert later_start.tunnel_line_color() == RgbColor{ r: 0.4, g: 0.7, b: 0.7 }
 }
 
 fn test_tunnel_dark_line_ratio_alternates_and_transitions_over_sixty_ticks() {
@@ -2735,7 +2735,12 @@ fn test_enemy_fire_originates_from_enemy_on_schedule() {
 }
 
 fn test_aim_direction_uses_shortest_route_across_tunnel_seam() {
-	direction := aim_direction(Vec2{ x: 6.27, y: 20 }, Vec2{ x: 0.01, y: 0 })
+	from := Vec2{ x: 6.27, y: 20 }
+	to := Vec2{ x: 0.01, y: 0 }
+	direction := aim_direction_reversed(from, to, 1)
 	assert direction > 3.0
 	assert direction < 3.2
+	reversed := aim_direction_reversed(from, to, -1)
+	assert reversed < -3.0
+	assert reversed > -3.2
 }

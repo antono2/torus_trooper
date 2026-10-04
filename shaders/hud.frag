@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
+#include "hud_state.h"
 
 layout(location = 0) in vec3 glyph_color;
 layout(location = 1) flat in float ignore_transition;
@@ -14,13 +17,13 @@ layout(push_constant) uniform Display {
 } display;
 
 void main() {
-    if ((display.state & 128) != 0) {
+    if ((display.state & TT_HUD_REPLAY_LIBRARY) != 0) {
         color = vec4(glyph_color, glyph_alpha);
         return;
     }
     float fade = mix(1.0 - display.transition_fade, 1.0, ignore_transition);
     if (display.shadow_pass < -0.5) {
-        color = vec4(0.0, 0.0, 0.0, max(glyph_alpha, 0.68) * fade * 0.92);
+        color = vec4(color_black, max(glyph_alpha, 0.68) * fade * 0.92);
         return;
     }
     color = vec4(glyph_color * display.brightness * fade, glyph_alpha);

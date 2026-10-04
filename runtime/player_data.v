@@ -30,12 +30,12 @@ pub mut:
 	high_score_start_levels []int = [1, 1, 1]
 	high_score_end_levels   []int = [1, 1, 1]
 	reached_levels          []int = [1, 1, 1]
-	volume_percent          int   = 35
-	antialiasing_samples    int   = 8
-	near_blur_percent       int   = 80
-	near_fade_percent       int   = 65
+	volume_percent          int   = default_volume_percent
+	antialiasing_samples    int   = default_antialiasing_samples
+	near_blur_percent       int   = default_near_blur_percent
+	near_fade_percent       int   = default_near_fade_percent
 	rear_track_blend        int   = default_rear_track_blend_percent
-	track_draw_distance     int   = 75
+	track_draw_distance     int   = default_track_draw_distance
 	wire_draw_distance      int   = default_wire_draw_distance
 	border_draw_distance    int   = default_border_draw_distance
 	fps_limit               int

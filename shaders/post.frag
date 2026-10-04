@@ -1,4 +1,6 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "palette.glsl"
 
 layout(set = 0, binding = 0) uniform sampler2D scene_image;
 
@@ -50,6 +52,5 @@ void main() {
     blurred += texture(scene_image, texture_coordinate + vec2(-radius.x, radius.y)) * 0.07;
     vec4 sharp = texture(scene_image, texture_coordinate);
     vec4 softened = mix(sharp, blurred, blur_factor);
-    const vec3 stable_background = vec3(0.008, 0.012, 0.03);
-    color = vec4(mix(softened.rgb, stable_background, fade_factor), softened.a);
+    color = vec4(mix(softened.rgb, color_background_navy, fade_factor), softened.a);
 }

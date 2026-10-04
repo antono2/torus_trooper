@@ -34,48 +34,17 @@ pub:
 	rings  []CourseRing
 }
 
-pub struct TunnelColor {
-pub:
-	r f32
-	g f32
-	b f32
-}
-
-fn tunnel_line_palette(index int) TunnelColor {
-	return match index % 7 {
-		0 { TunnelColor{ r: 0.6, g: 0.7, b: 1 } }
-		1 { TunnelColor{ r: 0.4, g: 0.8, b: 0.6 } }
-		2 { TunnelColor{ r: 0.7, g: 0.5, b: 0.6 } }
-		3 { TunnelColor{ r: 0.6, g: 0.6, b: 0.6 } }
-		4 { TunnelColor{ r: 0.4, g: 0.7, b: 0.7 } }
-		5 { TunnelColor{ r: 0.6, g: 0.7, b: 0.5 } }
-		else { TunnelColor{ r: 0.6, g: 0.4, b: 1 } }
-	}
-}
-
-fn tunnel_poly_palette(index int) TunnelColor {
-	return match index % 7 {
-		0 { TunnelColor{ r: 0.7, g: 0.9, b: 1 } }
-		1 { TunnelColor{ r: 0.6, g: 1, b: 0.8 } }
-		2 { TunnelColor{ r: 0.9, g: 0.7, b: 0.6 } }
-		3 { TunnelColor{ r: 0.8, g: 0.8, b: 0.8 } }
-		4 { TunnelColor{ r: 0.5, g: 0.9, b: 0.9 } }
-		5 { TunnelColor{ r: 0.7, g: 0.9, b: 0.6 } }
-		else { TunnelColor{ r: 0.8, g: 0.5, b: 0.9 } }
-	}
-}
-
 fn tunnel_palette_index(level f32) int {
 	return int(level) - 1
 }
 
-pub fn (simulation &Simulation) tunnel_line_color() TunnelColor {
+pub fn (simulation &Simulation) tunnel_line_color() RgbColor {
 	index := tunnel_palette_index(simulation.level)
 	current := tunnel_line_palette(index)
 	if simulation.zone % 2 == 1 && simulation.palette_transition_ticks > 0 {
 		previous := tunnel_line_palette(index + 6)
-		ratio := f32(simulation.palette_transition_ticks) / 60
-		return TunnelColor{
+		ratio := f32(simulation.palette_transition_ticks) / palette_transition_duration_ticks
+		return RgbColor{
 			r: previous.r * ratio + current.r * (1 - ratio)
 			g: previous.g * ratio + current.g * (1 - ratio)
 			b: previous.b * ratio + current.b * (1 - ratio)
@@ -84,13 +53,13 @@ pub fn (simulation &Simulation) tunnel_line_color() TunnelColor {
 	return current
 }
 
-pub fn (simulation &Simulation) tunnel_poly_color() TunnelColor {
+pub fn (simulation &Simulation) tunnel_poly_color() RgbColor {
 	index := tunnel_palette_index(simulation.level)
 	current := tunnel_poly_palette(index)
 	if simulation.zone % 2 == 1 && simulation.palette_transition_ticks > 0 {
 		previous := tunnel_poly_palette(index + 6)
-		ratio := f32(simulation.palette_transition_ticks) / 60
-		return TunnelColor{
+		ratio := f32(simulation.palette_transition_ticks) / palette_transition_duration_ticks
+		return RgbColor{
 			r: previous.r * ratio + current.r * (1 - ratio)
 			g: previous.g * ratio + current.g * (1 - ratio)
 			b: previous.b * ratio + current.b * (1 - ratio)
@@ -100,7 +69,7 @@ pub fn (simulation &Simulation) tunnel_poly_color() TunnelColor {
 }
 
 pub fn (simulation &Simulation) tunnel_dark_line_ratio() f32 {
-	transition := clamp_f32(f32(simulation.palette_transition_ticks) / 60, 0, 1)
+	transition := clamp_f32(f32(simulation.palette_transition_ticks) / palette_transition_duration_ticks, 0, 1)
 	return if simulation.zone % 2 == 1 { transition } else { 1 - transition }
 }
 
@@ -382,7 +351,6 @@ const course_render_camera_distance = -course_render_depth_base / course_render_
 // camera. Recycling at exactly one tile could discard the whole object while
 // rasterization still covered its camera-crossing edge, producing a flash.
 const course_render_rear_margin = f32(1.5)
-const course_render_backtrack = -course_render_camera_distance + course_render_rear_margin
 // Legacy snapshot helpers retain three quarters of the sampled course. The
 // runtime can request a longer solid-panel horizon, while boundary markers
 // continue to the last complete sampled ring.
@@ -1023,7 +991,7 @@ fn (simulation &Simulation) render_course_fill_snapshot_in_direction(ring_count 
 	return vertices
 }
 
-fn course_fill_point_from_unit(frame CourseRenderFrame, point CourseUnitPoint, color TunnelColor,
+fn course_fill_point_from_unit(frame CourseRenderFrame, point CourseUnitPoint, color RgbColor,
 	alpha f32) CourseFillVertex {
 	x, y := course_surface_xy_from_unit(frame, point)
 	return CourseFillVertex{

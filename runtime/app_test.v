@@ -55,12 +55,6 @@ fn test_input_state_can_force_brake_for_effect_test() {
 	assert !input.fire
 }
 
-fn test_adjacent_grade_wraps_in_both_directions() {
-	assert adjacent_grade(.normal, -1) == sim.Grade.extreme
-	assert adjacent_grade(.normal, 1) == sim.Grade.hard
-	assert adjacent_grade(.extreme, 1) == sim.Grade.normal
-}
-
 fn test_gameplay_config_uses_title_selection() {
 	config := gameplay_config(.hard, 12)
 	assert config.grade == sim.Grade.hard
@@ -175,10 +169,10 @@ fn test_new_simulation_applies_the_shot_distance_from_object_sizes() {
 }
 
 fn test_title_level_selection_wraps_within_reached_level() {
-	assert cycled_level(1, 7, -1) == 7
-	assert cycled_level(7, 7, 1) == 1
-	assert cycled_level(3, 7, 1) == 4
-	assert cycled_level(1, 1, 1) == 1
+	assert title_moved_level(1, 7, -1, false) == 7
+	assert title_moved_level(7, 7, 1, false) == 1
+	assert title_moved_level(3, 7, 1, false) == 4
+	assert title_moved_level(1, 1, 1, false) == 1
 }
 
 fn test_title_level_hold_accelerates_and_clamps_at_boundaries() {

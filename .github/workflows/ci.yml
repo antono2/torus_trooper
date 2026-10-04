@@ -250,8 +250,16 @@ jobs:
           $Destination = Join-Path $env:VULKAN_SDK 'Include\volk'
           New-Item -ItemType Directory -Force $Destination | Out-Null
           Copy-Item dependencies/volk/volk.h, dependencies/volk/volk.c $Destination
-      - name: Install GLFW
-        run: vcpkg install glfw3:x64-mingw-static
+      - name: Install GLFW and shader tools
+        shell: pwsh
+        run: |
+          vcpkg install glfw3:x64-mingw-static 'glslang[tools]:x64-windows' 'spirv-tools[tools]:x64-windows'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The small Vulkan CI artifact contains runtime headers/libraries,
+          # not the SDK's shader executables. Install the tools explicitly.
+          $ToolsRoot = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-windows/tools'
+          (Join-Path $ToolsRoot 'glslang') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          (Join-Path $ToolsRoot 'spirv-tools') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Test and build with Clang
         shell: pwsh
         run: |

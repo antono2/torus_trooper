@@ -1,3 +1,4 @@
+// V interface to the native audio engine, including effect/music playback and failure reporting.
 module runtime
 
 #flag linux -ldl

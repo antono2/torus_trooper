@@ -1,3 +1,4 @@
+// Builds HUD glyph and overlay geometry from the shared packed HUD state.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "palette.glsl"

@@ -130,3 +130,16 @@ Bundled music and sounds retain [Kenta Cho’s license](sounds/LICENSE.txt),
 and the audio library retains [its own license](thirdparty/miniaudio/LICENSE).
 The Linux archive includes runtime-library license notices under
 `thirdparty/linux-runtime/`.
+
+## Source navigation
+
+Start at [`torus_trooper.v`](torus_trooper.v) for command-line dispatch,
+[`runtime/`](runtime/) for window, audio, input and Vulkan resource lifetimes,
+and [`sim/`](sim/) for deterministic gameplay and replay state. The
+[`shaders/`](shaders/) consume the render snapshots produced by the simulation.
+File introductions identify the boundary each implementation or test exercises.
+
+The bundled [`thirdparty/`](thirdparty/) sources retain their upstream headers;
+maintain integration comments in the local bridges instead. When moving code or
+adding introductions, update guide line links and run
+`python3 scripts/check_guide_links.py` to catch stale source references.

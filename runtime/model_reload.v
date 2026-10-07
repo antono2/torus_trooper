@@ -1,3 +1,4 @@
+// Polls the editable ship-model file and retains the last valid model after invalid edits.
 module runtime
 
 import json2

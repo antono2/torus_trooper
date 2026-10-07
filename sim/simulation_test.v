@@ -1,3 +1,4 @@
+// Regression coverage for seeded gameplay, entity lifetimes, collisions, and difficulty rules.
 module sim
 
 import math

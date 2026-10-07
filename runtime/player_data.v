@@ -1,3 +1,4 @@
+// Persists scores, replay metadata, unlocks, and user settings with normalization of older saves.
 module runtime
 
 import json2

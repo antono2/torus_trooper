@@ -1,3 +1,4 @@
+// Shades tunnel lines with palette colors and depth-dependent presentation inputs.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "palette.glsl"

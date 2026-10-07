@@ -1,3 +1,4 @@
+// Checks runtime configuration, input mapping, presentation, and menu behavior.
 module runtime
 
 import sim

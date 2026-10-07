@@ -1,3 +1,4 @@
+// Connects native renderer buffers to the V Vulkan memory allocator and mapped uploads.
 module runtime
 
 import antono2.vkmemalloc as vma

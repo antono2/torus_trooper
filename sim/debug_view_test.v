@@ -1,3 +1,4 @@
+// Checks that diagnostic rendering is opt-in and leaves the simulation unchanged.
 module sim
 
 fn test_debug_view_is_opt_in_and_read_only() {

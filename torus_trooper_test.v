@@ -1,3 +1,4 @@
+// Checks command-line precedence, persistent options, validation, and launch-mode selection.
 module main
 
 import os

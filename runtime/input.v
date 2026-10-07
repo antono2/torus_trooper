@@ -1,3 +1,4 @@
+// Maps platform input bits into simulation actions and title-menu behavior.
 module runtime
 
 import sim

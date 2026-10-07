@@ -1,3 +1,4 @@
+# Builds the Windows game and optionally verifies the resulting executable.
 param(
     [string]$OutputPath = "torus_trooper.exe",
     [switch]$Verify

@@ -1,3 +1,4 @@
+// Preserves a live run while menus or replay views are active and restores its input context.
 module runtime
 
 import sim

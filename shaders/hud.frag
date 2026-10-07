@@ -1,3 +1,4 @@
+// Applies HUD colors and opacity to the generated overlay geometry.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "palette.glsl"

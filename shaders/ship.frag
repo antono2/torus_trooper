@@ -1,3 +1,4 @@
+// Shades ship surfaces using shared palette values and interpolated geometry inputs.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "palette.glsl"

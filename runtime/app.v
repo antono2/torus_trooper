@@ -1,3 +1,4 @@
+// Connects the deterministic simulation to the platform window, rendering, audio, and menus.
 module runtime
 
 import sim

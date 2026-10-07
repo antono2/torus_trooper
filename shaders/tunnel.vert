@@ -1,3 +1,4 @@
+// Transforms tunnel line geometry for the current camera and frame.
 #version 450
 
 layout(push_constant) uniform Frame {

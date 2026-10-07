@@ -1,3 +1,4 @@
+// Fixed-step game state, entity lifecycles, collision resolution, scoring, and seeded gameplay.
 module sim
 
 import math

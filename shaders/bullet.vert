@@ -1,3 +1,4 @@
+// Transforms bullet instances into tunnel-space geometry for rendering.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "render_codes.glsl"

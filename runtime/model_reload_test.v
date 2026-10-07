@@ -1,3 +1,4 @@
+// Checks model-file reloads and preservation of the last valid model after parsing errors.
 module runtime
 
 import os

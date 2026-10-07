@@ -1,3 +1,4 @@
+// Checks glyph codes and bitmap agreement between the V font and HUD shader.
 module font5x7
 
 import os

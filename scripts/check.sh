@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Runs repository verification gates for the game, supporting libraries, shaders, and tooling.
 set -euo pipefail
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

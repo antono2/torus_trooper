@@ -1,3 +1,4 @@
+// Checks known seeded ship shapes and agreement between visual/collision/exhaust geometry.
 module sim
 
 import math

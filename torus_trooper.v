@@ -1,3 +1,4 @@
+// Application entry point parsing configuration and command-line options before launching game modes.
 module main
 
 import os

@@ -1,3 +1,4 @@
+// Transforms filled tunnel panels and forwards their color and fade inputs.
 #version 450
 
 layout(push_constant) uniform Frame {

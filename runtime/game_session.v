@@ -1,3 +1,4 @@
+// Creates seeded game/replay sessions and transfers completed run data into persistent records.
 module runtime
 
 import sim

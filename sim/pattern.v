@@ -1,3 +1,4 @@
+// Interprets native bullet-pattern programs and ranked or seeded value expressions.
 module sim
 
 import math

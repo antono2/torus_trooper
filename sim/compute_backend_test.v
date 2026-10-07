@@ -1,3 +1,4 @@
+// Compares batched compute paths with scalar references and checks entity compaction.
 module sim
 
 import math

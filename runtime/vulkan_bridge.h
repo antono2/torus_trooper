@@ -1,3 +1,5 @@
+// Native window/input and Vulkan renderer implementation consumed by the V runtime.
+// Owns presentation resources and exposes explicit creation, update, and destruction entry points.
 #ifndef TT_VULKAN_BRIDGE_H
 #define TT_VULKAN_BRIDGE_H
 

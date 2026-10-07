@@ -1,3 +1,4 @@
+// Defines and validates editable ship-model sections and parts before geometry construction.
 module sim
 
 import math

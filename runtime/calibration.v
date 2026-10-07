@@ -1,3 +1,4 @@
+// Builds calibration views and camera transforms for comparing object sizes and geometry.
 module runtime
 
 import math

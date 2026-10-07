@@ -1,3 +1,4 @@
+// Imports, exports, sorts, and edits saved replay records without changing recorded gameplay.
 module runtime
 
 import json2

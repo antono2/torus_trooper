@@ -1,3 +1,4 @@
+// Builds opt-in diagnostic geometry without changing simulation state.
 module sim
 
 import math

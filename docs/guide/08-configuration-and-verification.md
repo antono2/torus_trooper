@@ -8,11 +8,11 @@ regression evidence from production performance and compatibility evidence.
 
 ## Resolve configuration in a known order
 
-[`effective_arguments`](../../torus_trooper.v#L163) reads whitespace-separated
+[`effective_arguments`](../../torus_trooper.v#L164) reads whitespace-separated
 options from `options.ini`, then appends command-line arguments. Parsers for
 options that can be overridden scan the resulting list and let later entries
 win. `main` validates values before constructing `AppConfig` or entering
-headless mode. [`torus_trooper_test.v`](../../torus_trooper_test.v#L6) checks that
+headless mode. [`torus_trooper_test.v`](../../torus_trooper_test.v#L7) checks that
 a command-line resolution, grade, level, and other settings override earlier
 file values. An invalid resolution exits with status 2 before window creation.
 
@@ -30,7 +30,7 @@ Saved player data enters later: `new_app` uses stored settings only when a
 corresponding command-line option was not explicitly supplied. This is why
 `AppConfig` carries flags such as `audio_volume_explicit`. Selected grade and
 level follow the same principle in `App.run`. `object_sizes.json` has its own
-path and normalization in [`object_sizes.v`](../../runtime/object_sizes.v#L81).
+path and normalization in [`object_sizes.v`](../../runtime/object_sizes.v#L82).
 When adopting this design, write down precedence for each setting; an ordered
 argument list alone does not specify how saved preferences interact with it.
 For a desktop developer build, a command line is convenient. A consumer
@@ -62,7 +62,7 @@ change on an actual display.
 A short loop starts with the smallest test that describes the changed rule,
 then builds the game, runs a fixed headless case, and observes the affected
 scene. For example, after editing barrage behavior,
-[`sim/pattern_test.v`](../../sim/pattern_test.v#L27) is a focused check; after
+[`sim/pattern_test.v`](../../sim/pattern_test.v#L28) is a focused check; after
 changing course drawing, the graphical view and its diagnostic overlays
 matter more. The 600-tick run is a regression signal, not a visual check.
 Run the broader platform gate before publishing a change. The commands below
@@ -144,9 +144,9 @@ GPU fill, or synchronization dominates that frame.
 
 | Observed problem | Current design and possible change | Cost or quality condition |
 | --- | --- | --- |
-| Many empty pool slots are visited. | [`update_bullets`](../../sim/simulation.v#L461) scans its fixed bullet pool; a maintained active-index list or dense active range could shorten sparse passes. | Maintain spawn and death bookkeeping, preserve ordered hit decisions, and compare complete tick times at both low and peak occupancy. |
-| Collision pair checks rise with population. | [`shot_enemy_collision_candidates`](../../sim/compute_backend.v#L63) and [`shot_bullet_collision_candidates`](../../sim/compute_backend.v#L85) test active shots against target slots. Spatial bins in tunnel angle and depth could narrow candidates. | Wrap angular bins at the seam; emit pairs in the same shot and target order, or define and test a new hit order. Count tested pairs and measure the cost of building bins. |
-| Rendering consumes frame time or bandwidth. | [`App.run`](../../runtime/app.v#L1201) regenerates tunnel geometry and render streams, then uploads them. Draw distance and antialiasing settings can reduce work; cached or device-local geometry is another option. | Measure CPU generation, transfer, and GPU time separately. Reduce distant detail only while hazards, path, and text remain readable. |
+| Many empty pool slots are visited. | [`update_bullets`](../../sim/simulation.v#L462) scans its fixed bullet pool; a maintained active-index list or dense active range could shorten sparse passes. | Maintain spawn and death bookkeeping, preserve ordered hit decisions, and compare complete tick times at both low and peak occupancy. |
+| Collision pair checks rise with population. | [`shot_enemy_collision_candidates`](../../sim/compute_backend.v#L64) and [`shot_bullet_collision_candidates`](../../sim/compute_backend.v#L86) test active shots against target slots. Spatial bins in tunnel angle and depth could narrow candidates. | Wrap angular bins at the seam; emit pairs in the same shot and target order, or define and test a new hit order. Count tested pairs and measure the cost of building bins. |
+| Rendering consumes frame time or bandwidth. | [`App.run`](../../runtime/app.v#L1202) regenerates tunnel geometry and render streams, then uploads them. Draw distance and antialiasing settings can reduce work; cached or device-local geometry is another option. | Measure CPU generation, transfer, and GPU time separately. Reduce distant detail only while hazards, path, and text remain readable. |
 | Compute offload adds latency. | The optional checked OpenCL path compacts, transfers, runs, reads back, and compares against CPU reference work. | Count total batch time and synchronization, not kernel time alone; preserve a tested CPU path for unsupported or failing devices. |
 
 Speed is one quality constraint. A late input response, uneven frame pacing,

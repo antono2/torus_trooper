@@ -1,3 +1,4 @@
+// Checks fixed-width glyph cells, spacing, and text advances.
 module font5x7
 
 fn test_mono_glyphs_have_fixed_cells_and_empty_spacing() {

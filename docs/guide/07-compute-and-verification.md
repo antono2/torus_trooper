@@ -9,17 +9,17 @@ every OpenCL batch against CPU reference work.
 
 ## Choose work with a stable boundary
 
-[`compute_backend.v`](../../sim/compute_backend.v#L784) defines separate arrays of
+[`compute_backend.v`](../../sim/compute_backend.v#L785) defines separate arrays of
 fields for particle, bullet, shot, and enemy motion. Each batch records
 `source_indices`, so compacting active pool slots does not lose their original
 order. CPU functions such as
-[`cpu_step_particle_motion`](../../sim/compute_backend.v#L833) provide the reference
-result. [`opencl_compute.v`](../../sim/opencl_compute.v#L418) contains the optional
+[`cpu_step_particle_motion`](../../sim/compute_backend.v#L834) provide the reference
+result. [`opencl_compute.v`](../../sim/opencl_compute.v#L420) contains the optional
 device kernels and reusable buffers.
 
 Collision candidates are pairs that *might* overlap after a broad check.
-[`shot_enemy_collision_candidates`](../../sim/compute_backend.v#L63) and
-[`shot_bullet_collision_candidates`](../../sim/compute_backend.v#L85) give
+[`shot_enemy_collision_candidates`](../../sim/compute_backend.v#L64) and
+[`shot_bullet_collision_candidates`](../../sim/compute_backend.v#L86) give
 the CPU reference in shot-major, target-minor order. The OpenCL path compacts
 active shots and targets, creates candidate pairs, and compares the resulting
 stream with the CPU reference. The normal ordered collision pass still
@@ -49,7 +49,7 @@ claiming it is faster.
 
 ## Make absence and failure ordinary states
 
-[`new_compute_session`](../../sim/compute_backend.v#L126) records both the
+[`new_compute_session`](../../sim/compute_backend.v#L127) records both the
 requested and active backend. A normal build lacks `-d opencl_compute`;
 requesting OpenCL then selects the CPU and
 records why. An OpenCL build can also fall back when no device is available or
@@ -96,7 +96,7 @@ the CPU fallback remains part of the supported configuration.
 
 The ordinary binary reports `compute_requested=opencl` but
 `compute_active=cpu` when built without `-d opencl_compute`. The
-[`compute_backend_test.v`](../../sim/compute_backend_test.v#L266) and
+[`compute_backend_test.v`](../../sim/compute_backend_test.v#L267) and
 [`scripts/check.sh`](../../scripts/check.sh) verify that fallback preserves
 gameplay checksums. The optional `TT_OPENCL_SMOKE=1` gate requires a device
 run and checks its batches. Those are correctness checks, not benchmarks.

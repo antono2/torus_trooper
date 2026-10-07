@@ -1,3 +1,4 @@
+// Emits the full-screen geometry and texture coordinates used by post-processing.
 #version 450
 
 layout(location = 0) out vec2 texture_coordinate;

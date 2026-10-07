@@ -1,3 +1,4 @@
+// Builds volumetric ship meshes and transforms model geometry for runtime and calibration views.
 module sim
 
 import math

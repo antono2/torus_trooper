@@ -1,3 +1,4 @@
+// Transforms ship geometry using per-frame camera and projection data.
 #version 450
 
 layout(push_constant) uniform Frame {

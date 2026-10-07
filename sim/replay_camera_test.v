@@ -1,3 +1,4 @@
+// Checks camera wrap direction, reference poses, deterministic motion, and bounds.
 module sim
 
 import math

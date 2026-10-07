@@ -1,3 +1,4 @@
+// Generates course slices, tunnel profiles, and level-dependent course colors.
 module sim
 
 import math

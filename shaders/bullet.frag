@@ -1,3 +1,4 @@
+// Shades bullet fragments using the shared render codes and per-instance inputs.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "render_codes.glsl"

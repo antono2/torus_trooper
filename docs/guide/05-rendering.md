@@ -8,7 +8,7 @@ visual assets come from and how they reach GPU memory.
 
 ## Use a snapshot boundary
 
-[`render_snapshot.v`](../../sim/render_snapshot.v#L22) defines `RenderInstance`, a
+[`render_snapshot.v`](../../sim/render_snapshot.v#L23) defines `RenderInstance`, a
 64-byte value of sixteen `f32` fields. It carries tunnel position, visual kind,
 scale, a local orientation frame, and rotation. A `RenderEntitySoa` first
 collects each field in a separate contiguous array. *Structure of arrays*
@@ -35,10 +35,10 @@ flowchart LR
 ```
 
 The course is drawn through separate vertex types in
-[`course.v`](../../sim/course.v#L318): wire geometry and filled panels. Ship hulls
+[`course.v`](../../sim/course.v#L319): wire geometry and filled panels. Ship hulls
 also have a separate procedural mesh path in
-[`ship_mesh.v`](../../sim/ship_mesh.v#L689). Seeded ship structure definitions in
-[`ship_geometry.v`](../../sim/ship_geometry.v#L25) are also used for collision
+[`ship_mesh.v`](../../sim/ship_mesh.v#L690). Seeded ship structure definitions in
+[`ship_geometry.v`](../../sim/ship_geometry.v#L26) are also used for collision
 dimensions and exhaust placement. That relationship keeps a generated
 silhouette and its gameplay footprint in agreement.
 
@@ -50,7 +50,7 @@ The proxy is deliberately not the rendered outline. Both are derived from the
 seeded ship definition, so an imported replacement would need equivalent
 collision and attachment data. In play, `--debug-view=collisions,exhaust`
 shows these proxies over the scene without changing the simulation.
-[`App.run`](../../runtime/app.v#L1201) chooses the visible view and passes the
+[`App.run`](../../runtime/app.v#L1202) chooses the visible view and passes the
 resulting arrays to `tt_platform_set_bullets`, `tt_platform_set_tunnel`,
 `tt_platform_set_tunnel_fill`, and `tt_platform_set_ship_mesh`. `set_bullets` accepts the general instance stream, including shots and effects.
 The C bridge uploads those arrays and the [`shaders/`](../../shaders) directory
@@ -61,7 +61,7 @@ contains their rendering programs.
 The fixed-tick model records changes in ship position and angle. Between two
 ticks, `App.run` computes a fraction from the unconsumed accumulator time and
 uses `presentation_course_position`, `presentation_eye_angle`, and related
-helpers in [`simulation.v`](../../sim/simulation.v#L2271). It changes a presentation
+helpers in [`simulation.v`](../../sim/simulation.v#L2272). It changes a presentation
 copy of the ship before extracting geometry. Collisions, spawning, scoring,
 and replay input indexing still use the discrete simulation state.
 
@@ -70,7 +70,7 @@ wrapped difference so a crossing at the end of the course takes the short
 route instead of visually moving backward across the whole track. This is a
 specific example of why presentation interpolation needs domain knowledge.
 
-[`replay_camera.v`](../../sim/replay_camera.v#L27) supplies a seeded cinematic
+[`replay_camera.v`](../../sim/replay_camera.v#L28) supplies a seeded cinematic
 view for recorded runs, while ordinary play and ship-follow replay use the
 ship-centered path selected in `App.run`. The runtime passes camera
 parameters to the Vulkan bridge; shaders then transform tunnel and entity
@@ -86,7 +86,7 @@ change what the current binary loads.
 
 ## Decide how geometry reaches the GPU
 
-[`vulkan_memory.v`](../../runtime/vulkan_memory.v#L52) allocates three
+[`vulkan_memory.v`](../../runtime/vulkan_memory.v#L53) allocates three
 host-visible, host-coherent vertex buffers that remain mapped. C renderer code
 writes frame data into separate regions for frames in flight. This removes a
 map/unmap cycle and simplifies the bridge. The tradeoff is that the required
@@ -136,7 +136,7 @@ and replay inputs retain their existing definitions.
 
 The tuning scene also accepts optional shape definitions from
 [`tune_models.json`](../../models/tune_models.json), validated by
-[`ship_model_catalog.v`](../../sim/ship_model_catalog.v#L54). When enabled, a
+[`ship_model_catalog.v`](../../sim/ship_model_catalog.v#L55). When enabled, a
 definition replaces one preview hull in the tuning scene; ordinary play
 still uses its compiled procedural hull. This is a useful example of
 data-driven visual iteration, but it is not an importer for purchased 3D
@@ -159,7 +159,7 @@ their controls and outputs have been art-directed and tested.
 
 For example, replacing the generated boss hull with a purchased model is
 more than swapping its vertex buffer. The current
-[`ship_shape_collision`](../../sim/ship_geometry.v#L54) and exhaust offsets
+[`ship_shape_collision`](../../sim/ship_geometry.v#L55) and exhaust offsets
 derive from a shape seed. An authored boss needs an explicit collision proxy
 and named exhaust attachment points, or an importer that generates and
 reviews them. The build should validate those fields, convert the model to
@@ -168,7 +168,7 @@ data. Static mesh data can then be uploaded once into device-local memory;
 the per-frame stream need only send its transform and state. That is one
 production-oriented alternative to regenerating the whole hull path.
 
-[`render_snapshot_test.v`](../../sim/render_snapshot_test.v#L12) checks layout,
+[`render_snapshot_test.v`](../../sim/render_snapshot_test.v#L13) checks layout,
 orientation, and representative geometry before a window opens. Headless
 checksums catch data changes; a graphical review is still needed for framing,
 materials, motion, and readability. The two forms of evidence cover different

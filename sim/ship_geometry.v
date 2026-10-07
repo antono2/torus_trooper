@@ -1,3 +1,4 @@
+// Generates seeded ship structures, collision dimensions, and exhaust offsets from shared geometry.
 module sim
 
 import math

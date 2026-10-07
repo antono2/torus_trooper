@@ -1,3 +1,4 @@
+// Advances wall-clock presentation effects and title/replay transitions separately from simulation ticks.
 module runtime
 
 import time

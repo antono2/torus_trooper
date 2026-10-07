@@ -1,3 +1,4 @@
+// Converts simulation state into render instances, course geometry, and oriented entity snapshots.
 module sim
 
 import math

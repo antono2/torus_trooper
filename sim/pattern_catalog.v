@@ -1,3 +1,4 @@
+// Defines the named native bullet patterns used by enemy barrage selection.
 module sim
 
 fn rank_value(scale f32, offset f32) ValueExpression {

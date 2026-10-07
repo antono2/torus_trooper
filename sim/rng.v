@@ -1,3 +1,4 @@
+// MT19937 random stream and bounded helpers used for reproducible simulation and replay behavior.
 module sim
 
 const mt_state_size = 624

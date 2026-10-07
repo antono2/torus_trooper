@@ -1,3 +1,4 @@
+// Selects CPU or optional compute acceleration for entity updates and collision candidates.
 module sim
 
 import math

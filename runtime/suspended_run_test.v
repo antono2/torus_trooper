@@ -1,3 +1,4 @@
+// Checks suspended gameplay isolation and controller cancellation in nested menus.
 module runtime
 
 import sim

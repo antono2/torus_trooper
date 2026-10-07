@@ -1,3 +1,4 @@
+// Updates a deterministic replay camera from ship state and a separate seeded motion stream.
 module sim
 
 import math

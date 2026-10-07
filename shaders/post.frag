@@ -1,3 +1,4 @@
+// Composites the rendered scene with presentation effects and shared palette values.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "palette.glsl"

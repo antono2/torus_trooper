@@ -1,3 +1,4 @@
+// Difficulty-grade rules that configure simulation behavior and progression.
 module sim
 
 pub enum Grade {

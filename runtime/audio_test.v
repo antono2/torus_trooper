@@ -1,3 +1,4 @@
+// Checks effect-channel assignments, null-backend lifetime, and audio initialization failures.
 module runtime
 
 import os

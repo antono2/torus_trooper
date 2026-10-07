@@ -1,3 +1,5 @@
+// Optional OpenCL implementations of simulation compute operations.
+// Compiled only when the opencl_compute feature is enabled.
 module sim
 
 $if opencl_compute ? {

@@ -1,3 +1,5 @@
+// Owns the miniaudio engine and game sound assets behind the V audio interface.
+// Supports a null backend for tests without an audio device.
 #ifndef TT_AUDIO_BRIDGE_H
 #define TT_AUDIO_BRIDGE_H
 

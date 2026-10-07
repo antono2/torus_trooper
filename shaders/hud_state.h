@@ -1,3 +1,4 @@
+// Shared native definitions for the packed HUD state consumed by shader code.
 #ifndef TT_HUD_STATE_H
 #define TT_HUD_STATE_H
 

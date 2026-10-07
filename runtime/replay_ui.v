@@ -1,3 +1,4 @@
+// Connects replay-library input and rendering to the platform overlay and saved player data.
 module runtime
 
 import os

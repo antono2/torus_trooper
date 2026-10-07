@@ -1,3 +1,4 @@
+// Generates enemy specifications, barrage choices, and boss-bit formations from seeded state.
 module sim
 
 import math

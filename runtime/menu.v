@@ -1,3 +1,4 @@
+// Implements title, difficulty, and settings-menu choices and their display state.
 module runtime
 
 import sim

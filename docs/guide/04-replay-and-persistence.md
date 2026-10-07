@@ -39,27 +39,27 @@ sequenceDiagram
     end
 ```
 
-In [`App.run`](../../runtime/app.v#L1125), the live path appends the encoded input to
+In [`App.run`](../../runtime/app.v#L1126), the live path appends the encoded input to
 `recorded_inputs` before calling `update_with_input`. It copies the completed
 log into player data when the run ends. The replay path indexes the stored byte by
 `simulation.tick`. At the end of recorded input it enters the game-over tail;
 the title's attract replay later restarts from the same seed. The
-[`replay_test.v`](../../sim/replay_test.v#L8) test creates a 420-tick input sequence,
+[`replay_test.v`](../../sim/replay_test.v#L9) test creates a 420-tick input sequence,
 records its bytes, replays them into a fresh simulation, and compares gameplay
 checksums.
 
 ## Keep camera and sound outside the replay contract
 
-The replay camera in [`replay_camera.v`](../../sim/replay_camera.v#L27) uses its own
+The replay camera in [`replay_camera.v`](../../sim/replay_camera.v#L28) uses its own
 seeded state to choose cinematic views. The title can also show a ship-follow
 view. These choices change presentation, not the recorded gameplay inputs.
-Attract replay runs silently because [`App.run`](../../runtime/app.v#L1143) decides
+Attract replay runs silently because [`App.run`](../../runtime/app.v#L1144) decides
 when audio should play. Neither camera controls nor audio-device state need to
 be written into each tick's input byte.
 
 ## Persist only valid data
 
-[`PlayerData`](../../runtime/player_data.v#L24) stores settings, records, and
+[`PlayerData`](../../runtime/player_data.v#L25) stores settings, records, and
 a replay library as JSON, with a legacy latest-replay field for migration and
 title playback. Each recording adds a name, timestamp, and score. `load_player_data` falls back to defaults when the
 file cannot be read or decoded; `normalize` clamps settings, ensures array
@@ -115,8 +115,8 @@ cloud-synced game also needs a conflict policy. Those features are outside
 this repository's simple local save model.
 
 The
-[`test_replayed_inputs_reproduce_simulation_checksum`](../../sim/replay_test.v#L8)
+[`test_replayed_inputs_reproduce_simulation_checksum`](../../sim/replay_test.v#L9)
 test checks reconstruction from a fresh simulation. The
-[`player_data_test.v`](../../runtime/player_data_test.v#L212) tests check
+[`player_data_test.v`](../../runtime/player_data_test.v#L213) tests check
 normalization and invalid data. They are evidence for two different
 contracts: replay behavior and file ingestion.

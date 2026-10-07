@@ -8,8 +8,8 @@ entity-storage choices.
 
 ## State, time, and input
 
-[`SimulationConfig`](../../sim/simulation.v#L232) holds the initial grade, capacities,
-seed, and enabled rules. [`Simulation`](../../sim/simulation.v#L257) owns the mutable
+[`SimulationConfig`](../../sim/simulation.v#L233) holds the initial grade, capacities,
+seed, and enabled rules. [`Simulation`](../../sim/simulation.v#L258) owns the mutable
 ship, entity pools, score, clock, stage, course, and random generators. One call
 to `update_with_input(InputState)` advances exactly one tick; its caller decides
 when to call it. There is no wall-clock read inside that update.
@@ -39,8 +39,8 @@ replay results even if the individual functions are unchanged.
 
 ## Randomness is explicit state
 
-[`rng.v`](../../sim/rng.v#L9) implements MT19937.
-[`new_simulation`](../../sim/simulation.v#L332) creates
+[`rng.v`](../../sim/rng.v#L10) implements MT19937.
+[`new_simulation`](../../sim/simulation.v#L333) creates
 separate seeded streams for stage, barrage, enemy, shot, particle, ship, and
 other decisions. One subsystem can then consume an extra draw without shifting
 another subsystem's sequence. The course generator also receives an explicit
@@ -48,7 +48,7 @@ seed. No simulation function should call a platform random generator or read
 the current time; the runtime chooses the seed for a new live run and stores it
 with the replay.
 
-The [`test_subsystem_random_streams_start_equal_and_advance_independently`](../../sim/simulation_test.v#L72)
+The [`test_subsystem_random_streams_start_equal_and_advance_independently`](../../sim/simulation_test.v#L73)
 test demonstrates the distinction: streams begin from the same seed but advance
 independently. This does not make arbitrary refactors safe. Changing draw order
 *within* a subsystem can still change the run.
@@ -60,7 +60,7 @@ particles. The arrays are allocated in `new_simulation`; active items occupy
 slots rather than growing a new entity collection every tick. Cursor and
 replacement rules are part of behavior: a full pool can reject or replace a
 spawn, and later collision passes visit slots in a stable order. See
-[`test_disappearing_bullet_reserves_its_pool_slot_for_45_ticks`](../../sim/simulation_test.v#L34)
+[`test_disappearing_bullet_reserves_its_pool_slot_for_45_ticks`](../../sim/simulation_test.v#L35)
 for a small example of a slot staying occupied during an effect.
 
 The fixed arrays avoid per-spawn allocation and make maximum memory use
@@ -110,7 +110,7 @@ An *array of structs* (AoS) stores complete records next to one another.
 The gameplay pools here are `[]Bullet`, `[]Shot`, `[]Enemy`, and `[]Particle`:
 each slot keeps the state needed to make its ordered decisions. A *structure
 of arrays* (SoA) stores one field across many entities before the next
-field. [`ParticleMotionSoa`](../../sim/compute_backend.v#L784) has separate arrays
+field. [`ParticleMotionSoa`](../../sim/compute_backend.v#L785) has separate arrays
 for angles, depths, velocities, lives, and source pool indices. It collects
 only active particles for a motion pass, then scatters the results back to
 their stable gameplay slots.
@@ -137,7 +137,7 @@ live bullet needs it. [Intel's layout discussion](https://www.intel.com/content/
 describes why the access pattern decides among these layouts.
 
 The common operation is often called the *fast path*: it should do only the
-work needed for that case. In [`update_bullets`](../../sim/simulation.v#L461),
+work needed for that case. In [`update_bullets`](../../sim/simulation.v#L462),
 a bullet with no active pattern skips pattern execution. A dead slot also
 skips motion, but the loop still visits it and clears its pattern's active
 flag. These are shorter paths through one iteration, not active-only passes
@@ -151,7 +151,7 @@ operation short without changing when an event occurs.
 
 ## Size the working set, not just a struct
 
-`RenderInstance` in [`render_snapshot.v`](../../sim/render_snapshot.v#L22) is
+`RenderInstance` in [`render_snapshot.v`](../../sim/render_snapshot.v#L23) is
 exactly 64 bytes in the checked build. A thousand instances occupy 64,000
 bytes (62.5 KiB) before accounting for the SoA arrays, course vertices,
 game state, and other work. Its size says nothing by itself about whether

@@ -1,3 +1,4 @@
+// Checks compact replay input encoding and deterministic simulation playback.
 module sim
 
 fn test_replay_input_round_trip() {

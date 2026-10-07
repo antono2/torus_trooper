@@ -8,11 +8,11 @@ arrangements.
 
 ## The boundary first
 
-[`main`](../../torus_trooper.v#L7) parses launch options and chooses
-between [`run_headless`](../../torus_trooper.v#L624) and
-[`runtime.new_app`](../../runtime/app.v#L280). In graphical
+[`main`](../../torus_trooper.v#L8) parses launch options and chooses
+between [`run_headless`](../../torus_trooper.v#L625) and
+[`runtime.new_app`](../../runtime/app.v#L281). In graphical
 mode, `App.run` owns the window loop. In headless mode, `run_headless` constructs
-the same [`sim.Simulation`](../../sim/simulation.v#L257), calls `update` a requested
+the same [`sim.Simulation`](../../sim/simulation.v#L258), calls `update` a requested
 number of times, then prints checksums. These are two hosts for one game model.
 
 ```mermaid
@@ -33,7 +33,7 @@ sequenceDiagram
 ```
 
 The loop uses a real-time accumulator in
-[`App.run`](../../runtime/app.v#L1096); it consumes one `1 / ticks_per_second` interval
+[`App.run`](../../runtime/app.v#L1097); it consumes one `1 / ticks_per_second` interval
 for each simulation update. The constant is 60 in
 [`ticks_per_second`](../../sim/gameplay_tuning.v#L6). The runtime caps a single elapsed
 interval at 0.25 seconds so a long stall cannot request an unbounded catch-up
@@ -43,7 +43,7 @@ course between ticks. That fraction changes drawing, not gameplay decisions.
 ## Trace one action
 
 The platform bridge reports a bit mask from GLFW input. `input_state` in
-[`runtime/input.v`](../../runtime/input.v#L26) converts it to `sim.InputState`, whose
+[`runtime/input.v`](../../runtime/input.v#L27) converts it to `sim.InputState`, whose
 fields are `left`, `right`, `up`, `down`, `fire`, and `brake`. The name `brake`
 also covers the charged-shot control. Key bindings and the reverse-button
 option are runtime concerns; the simulation receives the same logical fields
@@ -61,11 +61,11 @@ enough to replay it when the seed and rules are also fixed.
 
 After all due ticks, `App.run` derives a presentation fraction from its
 accumulator. It uses `presentation_course_position` and related helpers in
-[`simulation.v`](../../sim/simulation.v#L2271) to form a presentation copy of the
+[`simulation.v`](../../sim/simulation.v#L2272) to form a presentation copy of the
 ship state. It then obtains entity data from
-[`render_instances_for_camera_with_scales`](../../sim/render_snapshot.v#L518)
+[`render_instances_for_camera_with_scales`](../../sim/render_snapshot.v#L519)
 and tunnel geometry from
-[`render_course_wire_without_markers`](../../sim/course.v#L655).
+[`render_course_wire_without_markers`](../../sim/course.v#L656).
 [Chapter 5](05-rendering.md) follows those buffers into Vulkan.
 
 The distinction matters when adapting this design: a high-refresh display may

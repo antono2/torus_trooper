@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Builds the Linux game with the selected V3 toolchain and native dependencies.
 set -euo pipefail
 
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)

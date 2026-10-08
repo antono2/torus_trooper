@@ -1,4 +1,4 @@
-// Checks player-data round trips, migration, score tracking, and settings normalization.
+// Checks player-data round trips, migration, score tracking and settings normalization.
 module runtime
 
 import os

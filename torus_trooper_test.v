@@ -1,4 +1,4 @@
-// Checks command-line precedence, persistent options, validation, and launch-mode selection.
+// Checks command-line precedence, persistent options, validation and launch-mode selection.
 module main
 
 import os
@@ -88,7 +88,7 @@ fn test_antialiasing_accepts_config_file_and_command_line_forms() {
 	assert !antialiasing_argument_explicit([])
 	assert antialiasing_argument_explicit(['--msaa=4'])
 	_ := antialiasing_argument(['--msaa=3']) or {
-		assert err.msg().contains('1, 2, 4, or 8')
+		assert err.msg().contains('1, 2, 4 or 8')
 		return
 	}
 	assert false

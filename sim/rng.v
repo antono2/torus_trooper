@@ -5,7 +5,7 @@ const mt_state_size = 624
 const mt_period_offset = 397
 
 // Mt19937 provides a stable random sequence for gameplay. Pattern,
-// stage, particle, and replay randomness must all derive from explicit seeded
+// stage, particle and replay randomness must all derive from explicit seeded
 // instances so a run never depends on wall-clock or platform RNG state.
 pub struct Mt19937 {
 mut:

@@ -2,7 +2,7 @@
 
 Replay is a consequence of the deterministic boundary from
 [Chapter 2](02-deterministic-simulation.md).
-Torus Trooper stores the initial seed, grade, starting level, and one logical
+Torus Trooper stores the initial seed, grade, starting level and one logical
 input byte per tick, plus shot range and god mode, rather than every ship and bullet position. A fresh
 simulation consumes those inputs in order. This is compact, but the design
 implicitly promises that the relevant rules and numeric behavior remain
@@ -11,9 +11,9 @@ compatible.
 ## Encode game actions, not devices
 
 [`Replay`](../../sim/replay.v#L12) contains `grade`, `starting_level`,
-`random_seed`, `inputs`, `player_shot_distance`, and `god_mode`. [`encode_input`](../../sim/replay.v#L22) assigns bits
+`random_seed`, `inputs`, `player_shot_distance` and `god_mode`. [`encode_input`](../../sim/replay.v#L22) assigns bits
 to the six fields of `InputState`; [`decode_input`](../../sim/replay.v#L45)
-reverses that mapping. A keyboard, controller, or
+reverses that mapping. A keyboard, controller or
 rebound key therefore produces the same replay byte when it means the same
 game action. The format records a tick's actions, not when a key event arrived
 within a display frame.
@@ -45,7 +45,7 @@ log into player data when the run ends. The replay path indexes the stored byte 
 `simulation.tick`. At the end of recorded input it enters the game-over tail;
 the title's attract replay later restarts from the same seed. The
 [`replay_test.v`](../../sim/replay_test.v#L9) test creates a 420-tick input sequence,
-records its bytes, replays them into a fresh simulation, and compares gameplay
+records its bytes, replays them into a fresh simulation and compares gameplay
 checksums.
 
 ## Keep camera and sound outside the replay contract
@@ -59,11 +59,11 @@ be written into each tick's input byte.
 
 ## Persist only valid data
 
-[`PlayerData`](../../runtime/player_data.v#L25) stores settings, records, and
+[`PlayerData`](../../runtime/player_data.v#L25) stores settings, records and
 a replay library as JSON, with a legacy latest-replay field for migration and
-title playback. Each recording adds a name, timestamp, and score. `load_player_data` falls back to defaults when the
+title playback. Each recording adds a name, timestamp and score. `load_player_data` falls back to defaults when the
 file cannot be read or decoded; `normalize` clamps settings, ensures array
-sizes, migrates older values, and rejects invalid library entries. The
+sizes, migrates older values and rejects invalid library entries. The
 version field supports changes in the save format. `record_result` copies the
 replay and updates scores when a run ends. Opening the menu suspends the live
 simulation and input log; resuming restores them without advancing the timer.
@@ -91,25 +91,25 @@ Consider a ten-minute arcade run. If replay is only an attract screen, the
 small input log may be sufficient. If a player must scrub to a particular
 moment or create a video, periodic checkpoints avoid replaying from tick
 zero. If replays are shared after game updates, the team must either retain
-old rules, migrate recordings, use presentation data, or state a limited
+old rules, migrate recordings, use presentation data or state a limited
 compatibility window. The current `PlayerData` version controls save
 normalization; it does not preserve old simulation rules.
 
 A concrete hybrid format could store a header with a rules version, seed,
-starting options, and input encoding version, followed by input bytes and a
+starting options and input encoding version, followed by input bytes and a
 checkpoint every few seconds. A checkpoint must contain the tick, active
-entity slots, pool cursors, stage state, and random-generator states, not
+entity slots, pool cursors, stage state and random-generator states, not
 only visible positions. Playback can start at the nearest checkpoint and
 consume later inputs. The added serializer must be versioned and validated;
 otherwise fast seeking creates a new source of replay divergence.
 
 ## Save data is a separate promise
 
-Settings, high scores, and the replay library share one JSON container here,
+Settings, high scores and the replay library share one JSON container here,
 but they have different lifetimes. A renderer setting can be clamped or
 reset safely; a high score may need stronger integrity expectations; a replay
 depends on exact starting conditions. An asset-rich game with large worlds
-may use separate settings, profile, and checkpoint files, with transactional
+may use separate settings, profile and checkpoint files, with transactional
 writes or backups so a failed write does not destroy a whole save. A
 cloud-synced game also needs a conflict policy. Those features are outside
 this repository's simple local save model.

@@ -1,4 +1,4 @@
-// Imports, exports, sorts, and edits saved replay records without changing recorded gameplay.
+// Imports, exports, sorts and edits saved replay records without changing recorded gameplay.
 module runtime
 
 import json2
@@ -142,7 +142,7 @@ fn (mut library ReplayLibrary) browse(directory string) {
 	library.mode = .browse
 }
 
-// Return a storage index to play, -2 to close, or -1 to keep browsing.
+// Return a storage index to play, -2 to close or -1 to keep browsing.
 fn (mut library ReplayLibrary) event(event int, mut data PlayerData, export_directory string, clipboard string) int {
 	library.data_changed = false
 	order := replay_library_order(data.replays, library.by_score)

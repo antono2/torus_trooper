@@ -3,7 +3,7 @@
 [Back to the game](../README.md) · [Design guide](learning-path.md) ·
 [Source repository](https://github.com/antono2/torus_trooper)
 
-This reference covers source builds, advanced settings, saved data, model tuning,
+This reference covers source builds, advanced settings, saved data, model tuning
 and diagnostics. For downloads, gameplay and everyday controls, start with the
 [README](../README.md). Build and test commands assume a source checkout with the
 repository root as the working directory.
@@ -128,7 +128,7 @@ v -d opencl_compute -cc gcc -o torus_trooper .
 ./torus_trooper --compute opencl
 ```
 
-`--compute cpu` is the default. If OpenCL was not compiled in, cannot initialize,
+`--compute cpu` is the default. If OpenCL was not compiled in, cannot initialize
 or produces a batch that differs from the CPU reference, the game uses the CPU
 result and reports the fallback. See [Compute backends](#compute-backends) for
 what is checked and which work remains on the CPU.
@@ -251,25 +251,25 @@ command-line values override earlier entries from `options.ini`:
 Binding names are case-insensitive; hyphens and spaces may replace underscores.
 Up to 24 bindings can be assigned to one action. The accepted strings are:
 
-- Keyboard: `a` through `z`, `0` through `9`, and `f1` through `f25`.
+- Keyboard: `a` through `z`, `0` through `9` and `f1` through `f25`.
 - Direction/navigation: `up`, `down`, `left`, `right`, `page_up`, `page_down`,
-  `home`, `end`, `insert`, `delete`, `tab`, and `backspace`.
+  `home`, `end`, `insert`, `delete`, `tab` and `backspace`.
 - Common keys: `space`, `enter`/`return`, `escape`/`esc`, `pause`, `menu`,
-  `caps_lock`, `scroll_lock`, `num_lock`, and `print_screen`.
+  `caps_lock`, `scroll_lock`, `num_lock` and `print_screen`.
 - Punctuation: `plus`/`equal`/`+`/`=`, `minus`/`-`, `comma`, `period`,
   `slash`, `semicolon`, `apostrophe`, `left_bracket`, `right_bracket`,
-  `backslash`, and `grave`.
+  `backslash` and `grave`.
 - Modifiers: `shift`/`left_shift`, `right_shift`, `ctrl`/`control`/
   `left_control`, `right_control`, `alt`/`left_alt`, `right_alt`,
-  `super`/`left_super`, and `right_super`.
+  `super`/`left_super` and `right_super`.
 - Numeric keypad: `kp_0` through `kp_9`, `kp_add`, `kp_subtract`,
-  `kp_multiply`, `kp_divide`, `kp_decimal`, `kp_equal`, and `kp_enter`.
+  `kp_multiply`, `kp_divide`, `kp_decimal`, `kp_equal` and `kp_enter`.
 - Standard gamepad buttons: `gamepad_a`, `gamepad_b`, `gamepad_x`,
   `gamepad_y`, `gamepad_left_bumper`, `gamepad_right_bumper`, `gamepad_back`,
   `gamepad_start`, `gamepad_guide`, `gamepad_left_thumb`,
-  `gamepad_right_thumb`, and `gamepad_dpad_up/right/down/left`.
+  `gamepad_right_thumb` and `gamepad_dpad_up/right/down/left`.
 - Standard gamepad axes: `gamepad_left_stick_left/right/up/down`,
-  `gamepad_right_stick_left/right/up/down`, `gamepad_left_trigger`, and
+  `gamepad_right_stick_left/right/up/down`, `gamepad_left_trigger` and
   `gamepad_right_trigger`. The `controller_` prefix is an alias for `gamepad_`.
 - Generic controllers: `joystick_button_1` through `joystick_button_16`, plus
   `joystick_axis_1_negative`/`positive` through
@@ -368,7 +368,7 @@ file editing workflow. Reloading files does not reload compiled V code or shader
 ./torus_trooper --no-sound --volume 0 --debug-view=boundaries,slices,enemies,collisions,exhaust
 ```
 
-Use any comma-separated subset of those overlays, `all` for all five, or `off`
+Use any comma-separated subset of those overlays, `all` for all five or `off`
 to disable them. They help inspect course geometry, collision proxies and exhaust
 placement without changing gameplay or replay state.
 
@@ -417,7 +417,7 @@ a mismatch uses the CPU result. This preserves deterministic replay and adds
 validation cost, so enabling OpenCL is not a promise of higher performance.
 
 Headless reports include gameplay, render, course and compute checksums, verified
-and mismatched batches, per-workload mismatch counts, and maximum numeric error.
+and mismatched batches, per-workload mismatch counts and maximum numeric error.
 Collision counters show active entities, tested pairs and emitted pairs. See
 [Optional compute](guide/07-compute-and-verification.md) for the data flow and
 tradeoffs.

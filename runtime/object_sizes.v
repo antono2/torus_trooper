@@ -1,4 +1,4 @@
-// Loads, validates, and saves configurable object scales and shot-distance settings.
+// Loads, validates and saves configurable object scales and shot-distance settings.
 module runtime
 
 import json2

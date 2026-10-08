@@ -1,4 +1,4 @@
-// Checks pattern expressions, sequencing, action parameters, and seeded execution.
+// Checks pattern expressions, sequencing, action parameters and seeded execution.
 module sim
 
 import math

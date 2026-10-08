@@ -1,9 +1,9 @@
 # 8. Make configuration and release evidence understandable
 
 A game must decide which settings come from defaults, files, the command
-line, or player preferences. A team also needs evidence that its chosen build
+line or player preferences. A team also needs evidence that its chosen build
 works on intended devices. This chapter explains this repository's
-precedence, shows a development loop on each desktop OS, and distinguishes
+precedence, shows a development loop on each desktop OS and distinguishes
 regression evidence from production performance and compatibility evidence.
 
 ## Resolve configuration in a known order
@@ -13,7 +13,7 @@ options from `options.ini`, then appends command-line arguments. Parsers for
 options that can be overridden scan the resulting list and let later entries
 win. `main` validates values before constructing `AppConfig` or entering
 headless mode. [`torus_trooper_test.v`](../../torus_trooper_test.v#L7) checks that
-a command-line resolution, grade, level, and other settings override earlier
+a command-line resolution, grade, level and other settings override earlier
 file values. An invalid resolution exits with status 2 before window creation.
 
 ```mermaid
@@ -43,14 +43,14 @@ before it reaches rendering or simulation.
 | Check | What it demonstrates | What it cannot demonstrate |
 | --- | --- | --- |
 | `v -cc gcc test torus_trooper_test.v` | Option parsing and launch decisions. | A working Vulkan driver. |
-| `v -cc gcc test sim runtime` | Focused rules, geometry, replay, persistence, audio lifecycle, and compute fallback. | The appearance of a presented frame. |
-| Headless 600-tick command | A fixed build's gameplay, render, course, and compute checksums. | Cross-platform bit identity or visual quality. |
-| `./scripts/check.sh` | Tests, build, headless baselines, fallback, and a Vulkan surface/allocation probe. | Human judgment of motion, sound, and layout. |
+| `v -cc gcc test sim runtime` | Focused rules, geometry, replay, persistence, audio lifecycle and compute fallback. | The appearance of a presented frame. |
+| Headless 600-tick command | A fixed build's gameplay, render, course and compute checksums. | Cross-platform bit identity or visual quality. |
+| `./scripts/check.sh` | Tests, build, headless baselines, fallback and a Vulkan surface/allocation probe. | Human judgment of motion, sound and layout. |
 | `TT_VISUAL_SMOKE=1 ./scripts/check.sh` | An automated effects scene can run in a graphical environment. | A complete visual review. |
 | `TT_OPENCL_SMOKE=1 ./scripts/check.sh` | An installed OpenCL device runs the checked backend. | A measured performance improvement. |
 
 The gate in [`scripts/check.sh`](../../scripts/check.sh) also rejects legacy
-SDL, VGL, and OpenGL paths. It compares fixed headless values and checks an
+SDL, VGL and OpenGL paths. It compares fixed headless values and checks an
 invalid-resolution error path. The CI workflow
 [`ci.yml`](../../.github/workflows/ci.yml) builds and tests on multiple
 operating systems with a tested V3 toolchain. Those
@@ -60,7 +60,7 @@ change on an actual display.
 ## A development loop on each desktop OS
 
 A short loop starts with the smallest test that describes the changed rule,
-then builds the game, runs a fixed headless case, and observes the affected
+then builds the game, runs a fixed headless case and observes the affected
 scene. For example, after editing barrage behavior,
 [`sim/pattern_test.v`](../../sim/pattern_test.v#L28) is a focused check; after
 changing course drawing, the graphical view and its diagnostic overlays
@@ -129,28 +129,28 @@ the same build helper and probes the executable after extracting its ZIP.
 
 If a focused test fails, inspect its named rule. If only a headless checksum
 changes, compare the relevant state and counts before updating a baseline.
-A graphical failure points to the host, driver, shaders, or buffer boundary.
+A graphical failure points to the host, driver, shaders or buffer boundary.
 
 ## Improve the measured frame and the game people experience
 
 A 60 Hz display presents a new frame about every 16.7 ms; the simulation's
 fixed 60 Hz tick is a separate clock. Sustaining that display rate requires
 the whole frame to fit its budget. Record the distribution of CPU simulation
-time, render preparation and upload time, GPU time, and input-to-display delay
+time, render preparation and upload time, GPU time and input-to-display delay
 in dense scenes on target hardware.
 Look at slow frames and long sessions as well as averages. A change that
 saves a small amount in one loop may be irrelevant if geometry generation,
-GPU fill, or synchronization dominates that frame.
+GPU fill or synchronization dominates that frame.
 
 | Observed problem | Current design and possible change | Cost or quality condition |
 | --- | --- | --- |
-| Many empty pool slots are visited. | [`update_bullets`](../../sim/simulation.v#L462) scans its fixed bullet pool; a maintained active-index list or dense active range could shorten sparse passes. | Maintain spawn and death bookkeeping, preserve ordered hit decisions, and compare complete tick times at both low and peak occupancy. |
+| Many empty pool slots are visited. | [`update_bullets`](../../sim/simulation.v#L462) scans its fixed bullet pool; a maintained active-index list or dense active range could shorten sparse passes. | Maintain spawn and death bookkeeping, preserve ordered hit decisions and compare complete tick times at both low and peak occupancy. |
 | Collision pair checks rise with population. | [`shot_enemy_collision_candidates`](../../sim/compute_backend.v#L64) and [`shot_bullet_collision_candidates`](../../sim/compute_backend.v#L86) test active shots against target slots. Spatial bins in tunnel angle and depth could narrow candidates. | Wrap angular bins at the seam; emit pairs in the same shot and target order, or define and test a new hit order. Count tested pairs and measure the cost of building bins. |
-| Rendering consumes frame time or bandwidth. | [`App.run`](../../runtime/app.v#L1202) regenerates tunnel geometry and render streams, then uploads them. Draw distance and antialiasing settings can reduce work; cached or device-local geometry is another option. | Measure CPU generation, transfer, and GPU time separately. Reduce distant detail only while hazards, path, and text remain readable. |
-| Compute offload adds latency. | The optional checked OpenCL path compacts, transfers, runs, reads back, and compares against CPU reference work. | Count total batch time and synchronization, not kernel time alone; preserve a tested CPU path for unsupported or failing devices. |
+| Rendering consumes frame time or bandwidth. | [`App.run`](../../runtime/app.v#L1202) regenerates tunnel geometry and render streams, then uploads them. Draw distance and antialiasing settings can reduce work; cached or device-local geometry is another option. | Measure CPU generation, transfer and GPU time separately. Reduce distant detail only while hazards, path and text remain readable. |
+| Compute offload adds latency. | The optional checked OpenCL path compacts, transfers, runs, reads back and compares against CPU reference work. | Count total batch time and synchronization, not kernel time alone; preserve a tested CPU path for unsupported or failing devices. |
 
 Speed is one quality constraint. A late input response, uneven frame pacing,
-unclear projectile silhouettes, clipped UI, or an unstable save can harm the
+unclear projectile silhouettes, clipped UI or an unstable save can harm the
 game even when average frames per second is high. Test those outcomes with
 people and devices that match the intended audience. Keep a reproducible
 scene and settings record for each performance comparison; use replay and
@@ -162,12 +162,12 @@ update order.
 Passing tests and a short Vulkan probe establish useful properties, but a
 sellable game needs evidence against its own requirements. If the target is
 a desktop arcade game, measure worst-case projectile scenes, input latency,
-frame pacing, and long-session stability on representative GPUs. If the
+frame pacing and long-session stability on representative GPUs. If the
 target is an asset-rich game, include streaming stalls, memory growth,
-texture quality, and content import errors.
+texture quality and content import errors.
 
 Collect frame-time distributions rather than only average frames per
-second, and record scene, device, build, and settings with each result.
-Use separate correctness, visual, usability, and performance reviews:
+second, and record scene, device, build and settings with each result.
+Use separate correctness, visual, usability and performance reviews:
 one green test suite cannot answer all four questions. Treat a changed
 baseline as a change to explain, not an expected value to update by reflex.

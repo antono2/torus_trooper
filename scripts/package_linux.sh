@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assembles the Linux distribution with game assets, runtime libraries, and launch metadata.
+# Assembles the Linux distribution with game assets, runtime libraries and launch metadata.
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then

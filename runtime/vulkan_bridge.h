@@ -1,5 +1,5 @@
 // Native window/input and Vulkan renderer implementation consumed by the V runtime.
-// Owns presentation resources and exposes explicit creation, update, and destruction entry points.
+// Owns presentation resources and exposes explicit creation, update and destruction entry points.
 #ifndef TT_VULKAN_BRIDGE_H
 #define TT_VULKAN_BRIDGE_H
 
@@ -2611,7 +2611,7 @@ static int tt_platform_set_antialiasing(TTPlatform *platform, int requested_samp
 static bool tt_platform_set_fps_limit(TTPlatform *platform, int fps_limit) {
     if (!platform || !platform->device) return false;
     if (fps_limit != -1 && fps_limit != 0 && fps_limit != 60) {
-        tt_set_error("FPS limit must be 60, display, or unlocked");
+        tt_set_error("FPS limit must be 60, display or unlocked");
         return false;
     }
     if (platform->fps_limit == fps_limit) return true;

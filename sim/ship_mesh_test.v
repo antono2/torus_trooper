@@ -1,4 +1,4 @@
-// Checks mesh volume, topology, model scaling, and tunnel clearance.
+// Checks mesh volume, topology, model scaling and tunnel clearance.
 module sim
 
 import math

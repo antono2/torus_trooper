@@ -137,5 +137,5 @@ Write-Host "Built Torus Trooper: $OutputPath"
 Write-Host "GLFW headers: $GlfwInclude"
 Write-Host "GLFW library: $GlfwLibrary"
 if ($Verify) {
-    Write-Host "Windows tests, headless run, and Vulkan probe passed."
+    Write-Host "Windows tests, headless run and Vulkan probe passed."
 }

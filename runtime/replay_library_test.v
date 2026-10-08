@@ -1,4 +1,4 @@
-// Checks replay migration, portable files, selection/editing, and retained gameplay settings.
+// Checks replay migration, portable files, selection/editing and retained gameplay settings.
 module runtime
 
 import os

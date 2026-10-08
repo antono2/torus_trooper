@@ -1,8 +1,8 @@
-# 1. Put input, simulation, and presentation on clear boundaries
+# 1. Put input, simulation and presentation on clear boundaries
 
 The first architectural decision is where a physical input becomes a game
-action, where game time advances, and which code may produce side effects.
-Torus Trooper puts those responsibilities in a runtime, simulation, and
+action, where game time advances and which code may produce side effects.
+Torus Trooper puts those responsibilities in a runtime, simulation and
 presentation path. This chapter traces one frame before comparing other
 arrangements.
 
@@ -44,14 +44,14 @@ course between ticks. That fraction changes drawing, not gameplay decisions.
 
 The platform bridge reports a bit mask from GLFW input. `input_state` in
 [`runtime/input.v`](../../runtime/input.v#L27) converts it to `sim.InputState`, whose
-fields are `left`, `right`, `up`, `down`, `fire`, and `brake`. The name `brake`
+fields are `left`, `right`, `up`, `down`, `fire` and `brake`. The name `brake`
 also covers the charged-shot control. Key bindings and the reverse-button
 option are runtime concerns; the simulation receives the same logical fields
 regardless of physical device.
 
 For each tick, the runtime either takes live logical input or decodes a recorded
 replay byte. It records live input before calling `update_with_input`. The
-simulation updates the ship, weapon, enemies, shots, bullets, particles, clock,
+simulation updates the ship, weapon, enemies, shots, bullets, particles, clock
 and shake in a defined order. It never polls GLFW.
 [Chapter 2](02-deterministic-simulation.md) explains why that order matters;
 [Chapter 4](04-replay-and-persistence.md) explains why recording the input is
@@ -70,15 +70,15 @@ and tunnel geometry from
 
 The distinction matters when adapting this design: a high-refresh display may
 draw two or three frames during one 60 Hz game tick. Drawing must not secretly
-spawn enemies, consume random numbers, or change collision results. Put those
+spawn enemies, consume random numbers or change collision results. Put those
 decisions in `update_with_input`; let presentation read their results.
 
 ## Why this split fits the game
 
-The game supports headless regression, input replay, and optional OpenCL work.
+The game supports headless regression, input replay and optional OpenCL work.
 A simulation that directly polls GLFW or submits Vulkan commands would make
 those paths depend on the window and driver. The explicit `InputState` and
-render snapshot boundaries let the same rules run in a window, a replay, or a
+render snapshot boundaries let the same rules run in a window, a replay or a
 counted headless loop. The cost is conversion: input bits become logical
 actions, and simulation state becomes render data each frame. These
 conversions must be kept accurate as features change.
@@ -87,16 +87,16 @@ conversions must be kept accurate as features change.
 
 | Design | Where it fits | Cost to account for |
 | --- | --- | --- |
-| Fixed simulation tick with interpolated presentation, as here. | Arcade action, replay, lockstep networking, and tests that depend on update order. | An accumulator, catch-up policy, and interpolation for smooth displays. |
+| Fixed simulation tick with interpolated presentation, as here. | Arcade action, replay, lockstep networking and tests that depend on update order. | An accumulator, catch-up policy and interpolation for smooth displays. |
 | Variable elapsed-time updates. | A small visual application whose state is mostly continuous and does not need exact replay. | Collision and tuning can change with frame rate; large time steps need clamping or subdivision. |
-| Fixed gameplay tick plus independent animation and UI clocks. | An asset-rich game with animation, menus, and effects that need different rates. | Clear ownership rules: animation may sample gameplay state but must not alter its decisions unexpectedly. |
+| Fixed gameplay tick plus independent animation and UI clocks. | An asset-rich game with animation, menus and effects that need different rates. | Clear ownership rules: animation may sample gameplay state but must not alter its decisions unexpectedly. |
 
 For example, a desktop game may be suspended for several seconds. Replaying every
 missed tick on resume could freeze the screen; discarding the gap and resuming
 from a saved state may be better. Torus Trooper caps one elapsed interval at
 0.25 seconds, a policy that limits catch-up work but does not solve every
 suspend-and-resume requirement. A networked game would also need to decide
-whether to delay input, predict, or roll back state; this repository does not
+whether to delay input, predict or roll back state; this repository does not
 implement those protocols.
 
 In a fixed-gameplay, free-animation variation, the host can call

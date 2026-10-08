@@ -1,4 +1,4 @@
-// Checks render layouts, orientation order, course fades, and snapshot consistency.
+// Checks render layouts, orientation order, course fades and snapshot consistency.
 module sim
 
 import math

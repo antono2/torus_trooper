@@ -1,4 +1,4 @@
-// Checks scale defaults, JSON migration, bounds, and calibration presentation.
+// Checks scale defaults, JSON migration, bounds and calibration presentation.
 module runtime
 
 import math

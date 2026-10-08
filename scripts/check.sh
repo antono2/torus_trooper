@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs repository verification gates for the game, supporting libraries, shaders, and tooling.
+# Runs repository verification gates for the game, supporting libraries, shaders and tooling.
 set -euo pipefail
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -21,7 +21,7 @@ done
 
 if grep -REni '\b(sdl|sdl2|vgl)\b|#flag.*-l(gl|opengl)([[:space:]]|$)' \
 		v.mod torus_trooper.v runtime sim; then
-	printf '%s\n' 'SDL, VGL, or OpenGL returned to the active source graph' >&2
+	printf '%s\n' 'SDL, VGL or OpenGL returned to the active source graph' >&2
 	exit 1
 fi
 

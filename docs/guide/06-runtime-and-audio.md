@@ -1,7 +1,7 @@
 # 6. Own resources and turn state into side effects
 
 The simulation can be replayed because it does not own a window, sound
-device, or Vulkan allocation. [`runtime.App`](../../runtime/app.v#L247) owns those
+device or Vulkan allocation. [`runtime.App`](../../runtime/app.v#L247) owns those
 resources and translates state changes into effects. This chapter explains
 why ownership sits there and when other service designs would be preferable.
 
@@ -10,11 +10,11 @@ why ownership sits there and when other service designs would be preferable.
 [`new_app`](../../runtime/app.v#L281) initializes the Vulkan loader, creates
 the GLFW/Vulkan platform, sets input bindings, creates the mapped vertex
 buffers, opens a compute
-session, loads object sizes, and then attempts audio creation. Each failed
+session, loads object sizes and then attempts audio creation. Each failed
 step releases what has already been created.
 [`App.shutdown`](../../runtime/app.v#L1483) stops audio and
 compute first, waits for the device to become idle before freeing Vulkan
-memory, and destroys the platform last. Calling `shutdown` again is safe
+memory and destroys the platform last. Calling `shutdown` again is safe
 because each released handle is cleared.
 
 ```mermaid
@@ -41,7 +41,7 @@ target to use.
 
 [`runtime/app.v`](../../runtime/app.v#L41) declares `C.tt_platform_*` functions;
 [`vulkan_bridge.h`](../../runtime/vulkan_bridge.h#L129) implements the platform,
-swapchain, pipelines, per-frame commands, input mapping, and presentation.
+swapchain, pipelines, per-frame commands, input mapping and presentation.
 [`vulkan_memory.v`](../../runtime/vulkan_memory.v#L53) owns the three mapped
 vertex buffers through the V Vulkan allocator. It attaches their handles and
 mapped pointers to the C platform. The ownership split is explicit: V creates
@@ -58,7 +58,7 @@ code, but it is not a general claim that V programs need a C renderer.
 
 ## Translate state changes into audio events
 
-The simulation increments counters such as `fired_shots`, `enemy_hits`, and
+The simulation increments counters such as `fired_shots`, `enemy_hits` and
 `warning_beeps`; it does not call an audio API. `capture_audio_state` in
 [`runtime/app.v`](../../runtime/app.v#L1557) takes values before a tick.
 [`play_simulation_audio`](../../runtime/app.v#L1580) compares those values with
@@ -70,7 +70,7 @@ which uses vendored miniaudio. The wrapper supports a null backend for tests.
 This counter comparison keeps effects outside the deterministic model. It
 also has a deliberate limit: it reports whether a kind of event occurred
 during a tick, not an arbitrarily long list of every occurrence. A game with
-positional audio, several simultaneous impacts, or effect parameters would
+positional audio, several simultaneous impacts or effect parameters would
 benefit from an ordered event list. A replay could regenerate that list from
 simulation; it need not store raw audio samples.
 
@@ -79,28 +79,28 @@ simulation; it need not store raw audio samples.
 | Design | When it fits | Cost to manage |
 | --- | --- | --- |
 | One application owner and explicit shutdown, used here. | A single window and a small fixed set of devices. | A large host loop can accumulate responsibilities; partial startup needs careful unwind. |
-| Subsystems with scoped resource owners. | Several windows, streamed assets, or frequent device recreation. | Dependencies and destruction order must still be explicit across owners. |
-| Event queue from simulation to services. | Many sound, haptic, particle, or analytics events per tick. | Event lifetime, ordering, deduplication, and overflow need rules. |
+| Subsystems with scoped resource owners. | Several windows, streamed assets or frequent device recreation. | Dependencies and destruction order must still be explicit across owners. |
+| Event queue from simulation to services. | Many sound, haptic, particle or analytics events per tick. | Event lifetime, ordering, deduplication and overflow need rules. |
 | Direct service calls inside gameplay objects. | A very small prototype where replay and headless use are irrelevant. | Tests and ports become coupled to devices; hidden side effects complicate deterministic behavior. |
 
 A commercial 3D game may stream models and music while a level runs. In that
 case, the simple startup/shutdown lifetime here is insufficient: assets need
-reference or handle ownership, cancellation, load failure behavior, and a
+reference or handle ownership, cancellation, load failure behavior and a
 budget for CPU and GPU residency. A game must also handle audio interruption
 and possible graphics-device loss. Those events are different from final
 shutdown. The runtime would need explicit
-pause, release, and restore states while keeping save data safe.
+pause, release and restore states while keeping save data safe.
 
 For a game with positional sound, an illustrative simulation event could
-carry a tick, event kind, entity ID, and world position. The simulation
+carry a tick, event kind, entity ID and world position. The simulation
 appends events in its established update order. After the tick, the runtime
-consumes them for audio, haptics, or subtitles. If the event buffer has a
+consumes them for audio, haptics or subtitles. If the event buffer has a
 fixed capacity, the design must specify which events survive overflow; if
 it grows, the team must budget its worst-case allocation. Neither version
 requires the simulation to know which audio library plays the sound.
 
 [`audio_test.v`](../../runtime/audio_test.v#L17) uses a null backend to test
-effect calls, missing assets, forced initialization failure, and repeated
+effect calls, missing assets, forced initialization failure and repeated
 shutdown without speakers. [`scripts/check.sh`](../../scripts/check.sh)
 adds a Vulkan probe for platform startup and mapped buffers. Neither check
 proves audio mix quality or device recovery, which require their own review

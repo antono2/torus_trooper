@@ -391,7 +391,7 @@ fn fps_limit_argument(launch_args []string) !int {
 	for index, argument in launch_args {
 		if argument == '--fps-limit' {
 			if index + 1 >= launch_args.len {
-				return error('--fps-limit requires 60, display, or unlocked')
+				return error('--fps-limit requires 60, display or unlocked')
 			}
 			value = launch_args[index + 1]
 		} else if argument.starts_with('--fps-limit=') {
@@ -403,7 +403,7 @@ fn fps_limit_argument(launch_args []string) !int {
 		'display', 'vsync' { -1 }
 		'unlocked', 'off', '0' { 0 }
 		else {
-			return error('invalid FPS limit `${value}`; use 60, display, or unlocked')
+			return error('invalid FPS limit `${value}`; use 60, display or unlocked')
 		}
 	}
 }
@@ -471,7 +471,7 @@ fn grade_argument(launch_args []string) !sim.Grade {
 	for index, argument in launch_args {
 		if argument == '--grade' {
 			if index + 1 >= launch_args.len {
-				return error('--grade requires normal, hard, or extreme')
+				return error('--grade requires normal, hard or extreme')
 			}
 			value = launch_args[index + 1].to_lower()
 		} else if argument.starts_with('--grade=') {
@@ -482,7 +482,7 @@ fn grade_argument(launch_args []string) !sim.Grade {
 		'normal', 'n' { sim.Grade.normal }
 		'hard', 'h' { sim.Grade.hard }
 		'extreme', 'e' { sim.Grade.extreme }
-		else { error('unknown grade "${value}"; expected normal, hard, or extreme') }
+		else { error('unknown grade "${value}"; expected normal, hard or extreme') }
 	}
 }
 
@@ -518,7 +518,7 @@ fn antialiasing_argument(launch_args []string) !int {
 	for index, argument in launch_args {
 		if argument in ['--antialiasing', '--msaa'] {
 			if index + 1 >= launch_args.len {
-				return error('${argument} requires 1, 2, 4, or 8')
+				return error('${argument} requires 1, 2, 4 or 8')
 			}
 			samples = launch_args[index + 1].int()
 		} else if argument.starts_with('--antialiasing=') || argument.starts_with('--msaa=') {
@@ -526,7 +526,7 @@ fn antialiasing_argument(launch_args []string) !int {
 		}
 	}
 	if samples !in [1, 2, 4, 8] {
-		return error('anti-aliasing samples must be 1, 2, 4, or 8')
+		return error('anti-aliasing samples must be 1, 2, 4 or 8')
 	}
 	return samples
 }

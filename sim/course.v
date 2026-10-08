@@ -1,4 +1,4 @@
-// Generates course slices, tunnel profiles, and level-dependent course colors.
+// Generates course slices, tunnel profiles and level-dependent course colors.
 module sim
 
 import math
@@ -546,7 +546,7 @@ fn (simulation &Simulation) actor_surface_placement_with_offset(angle f32, relat
 
 // actor_surface_render_pose returns the current polar placement plus three
 // nearby points in the tunnel-local frame: forward along the course, around
-// the circumference, and radially outward. Model transforms rotate objects
+// the circumference and radially outward. Model transforms rotate objects
 // in this 3D frame. Keeping all three projected
 // directions prevents a bank from being mistaken for an in-plane turn.
 fn (simulation &Simulation) actor_surface_render_pose(angle f32, relative_depth f32,

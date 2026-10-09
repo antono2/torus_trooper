@@ -103,6 +103,9 @@ jobs:
           # a transient-path bug in setup-v.
           env -u GITHUB_JOB make -C toolchain/v local=1
           echo "$GITHUB_WORKSPACE/toolchain/v" >> "$GITHUB_PATH"
+      - name: Verify the declared dependency graph
+        shell: bash
+        run: v run scripts/check_installed_deps.vsh
       - name: Install native runtime dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool x11-utils bubblewrap patchelf libxxf86vm1 libx11-xcb1 ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools
       - name: Compile and validate shaders
@@ -237,6 +240,9 @@ jobs:
         shell: pwsh
         run: |
           "$env:GITHUB_WORKSPACE\toolchain\v" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Verify the declared dependency graph
+        shell: bash
+        run: v run scripts/check_installed_deps.vsh
       - name: Install Vulkan SDK and SwiftShader test artifacts
         shell: bash
         run: bash modules/antono2/vulkan/.github/scripts/setup-vulkan-ci.sh 1.4.309.0 v1.2

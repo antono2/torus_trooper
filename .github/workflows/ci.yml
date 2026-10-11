@@ -41,6 +41,7 @@ jobs:
           ./scripts/setup_windows.ps1 -CacheDirectory $Cache -PrepareOnly
           foreach ($Arguments in @(@('--headless', '--ticks', '600', '--no-sound', '--volume', '0'), @('--probe', '--no-sound', '--volume', '0'))) {
             $GameProcess = Start-Process -FilePath (Join-Path $PWD 'torus_trooper.exe') -ArgumentList $Arguments -WorkingDirectory $PWD -WindowStyle Hidden -PassThru
+            $null = $GameProcess.Handle
             if (-not $GameProcess.WaitForExit(120000)) {
               Stop-Process -Id $GameProcess.Id -Force
               throw "Bootstrapped game timed out: $Arguments"

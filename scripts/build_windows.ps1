@@ -71,10 +71,10 @@ try {
         & python scripts/build_shaders.py
         if ($LASTEXITCODE -ne 0) { throw "Shader compilation failed." }
         $TestFlags = $CompilerFlags + @(
-            '-cflags', "-I$(Join-Path $env:VULKAN_SDK 'Include')",
-            '-cflags', "-I$GlfwInclude",
-            '-ldflags', "-L$(Join-Path $env:VULKAN_SDK 'Lib')",
-            '-ldflags', "-L$GlfwLibrary"
+            '-cflags', ('-I"' + (Join-Path $env:VULKAN_SDK 'Include') + '"'),
+            '-cflags', ('-I"' + $GlfwInclude + '"'),
+            '-ldflags', ('-L"' + (Join-Path $env:VULKAN_SDK 'Lib') + '"'),
+            '-ldflags', ('-L"' + $GlfwLibrary + '"')
         )
         $TestDirectory = Join-Path ([IO.Path]::GetTempPath()) ("torus-trooper-tests-" + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $TestDirectory | Out-Null

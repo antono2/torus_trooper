@@ -38,6 +38,15 @@ if ($Verify) {
             throw "Verification requires $Command. Install Python 3 and the Vulkan SDK shader tools."
         }
     }
+    $SavedErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $PythonVersion = & python --version 2>&1
+        $PythonExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $SavedErrorAction }
+    if ($PythonExit -ne 0 -or "$PythonVersion" -notmatch '^Python 3\.') {
+        throw 'Verification requires a working Python 3 executable on PATH; the Microsoft Store alias is insufficient.'
+    }
 }
 if ($Check) {
     Write-Host "Build prerequisites found. Setup will prepare pinned V3, MinGW Clang, Ninja, GLFW and V modules."

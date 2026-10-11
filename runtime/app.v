@@ -15,9 +15,9 @@ import time
 #flag windows -lglfw3
 
 $if windows {
-	#flag -I$env('GLFW_INCLUDE')
-	#flag -L$env('GLFW_LIB')
-	#flag -L$env('VULKAN_SDK')/Lib
+	#flag -I"$env('GLFW_INCLUDE')"
+	#flag -L"$env('GLFW_LIB')"
+	#flag -L"$env('VULKAN_SDK')/Lib"
 	#flag -DGLFW_INCLUDE_VULKAN
 	#flag -DGLFW_INCLUDE_NONE
 }

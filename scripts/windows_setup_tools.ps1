@@ -1,14 +1,14 @@
 # Checked downloads and Git checkouts used by the isolated Windows bootstrap.
-function Invoke-TTCommand([string]$Command, [string[]]$Arguments) {
+function Invoke-WindowsSetupCommand([string]$Command, [string[]]$Arguments) {
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Command failed with exit code ${LASTEXITCODE}: $($Arguments -join ' ')" }
 }
 
-function Get-TTCheckout([string]$Url, [string]$Revision, [string]$Directory) {
+function Get-WindowsSetupCheckout([string]$Url, [string]$Revision, [string]$Directory) {
     if (-not (Test-Path -LiteralPath $Directory)) {
-        Invoke-TTCommand git @('-c', 'core.longpaths=true', 'clone', '--filter=blob:none', '--no-checkout', $Url, $Directory)
-        Invoke-TTCommand git @('-C', $Directory, 'fetch', '--depth', '1', 'origin', $Revision)
-        Invoke-TTCommand git @('-C', $Directory, 'checkout', '--detach', $Revision)
+        Invoke-WindowsSetupCommand git @('-c', 'core.longpaths=true', 'clone', '--filter=blob:none', '--no-checkout', $Url, $Directory)
+        Invoke-WindowsSetupCommand git @('-C', $Directory, 'fetch', '--depth', '1', 'origin', $Revision)
+        Invoke-WindowsSetupCommand git @('-C', $Directory, 'checkout', '--detach', $Revision)
     }
     if (-not (Test-Path -LiteralPath (Join-Path $Directory '.git'))) {
         throw "Existing directory is not a managed Git checkout: $Directory. Choose another -CacheDirectory."
@@ -25,14 +25,14 @@ function Get-TTCheckout([string]$Url, [string]$Revision, [string]$Directory) {
     }
 }
 
-function Expand-TTVerifiedArchive([string]$Archive, [string]$Hash, [string]$Directory) {
+function Expand-WindowsSetupVerifiedArchive([string]$Archive, [string]$Hash, [string]$Directory) {
     if ((Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash -ne $Hash) {
         throw "Download checksum mismatch: $Archive. Remove this cached archive and retry."
     }
     Expand-Archive -LiteralPath $Archive -DestinationPath $Directory -Force
 }
 
-function Get-TTArchive([string]$Url, [string]$Hash, [string]$Archive, [string]$Directory, [string]$Executable) {
+function Get-WindowsSetupArchive([string]$Url, [string]$Hash, [string]$Archive, [string]$Directory, [string]$Executable) {
     $ProgressPreference = 'SilentlyContinue'
     $Marker = Join-Path $Directory '.archive-sha256'
     if (Test-Path -LiteralPath $Marker) {
@@ -46,7 +46,7 @@ function Get-TTArchive([string]$Url, [string]$Hash, [string]$Archive, [string]$D
         Write-Host "Downloading $Url"
         $Download = "$Archive.download.zip"
         if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-            Invoke-TTCommand curl.exe @('--fail', '--location', '--retry', '3', '--connect-timeout', '30', '--max-time', '900', '--silent', '--show-error', '--output', $Download, $Url)
+            Invoke-WindowsSetupCommand curl.exe @('--fail', '--location', '--retry', '3', '--connect-timeout', '30', '--max-time', '900', '--silent', '--show-error', '--output', $Download, $Url)
         } else {
             Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Download -TimeoutSec 120
         }
@@ -55,7 +55,7 @@ function Get-TTArchive([string]$Url, [string]$Hash, [string]$Archive, [string]$D
         }
         Move-Item -LiteralPath $Download -Destination $Archive -Force
     }
-    Expand-TTVerifiedArchive $Archive $Hash $Directory
+    Expand-WindowsSetupVerifiedArchive $Archive $Hash $Directory
     if (-not (Test-Path -LiteralPath (Join-Path $Directory $Executable))) {
         throw "Downloaded tool is missing ${Executable}: $Directory"
     }

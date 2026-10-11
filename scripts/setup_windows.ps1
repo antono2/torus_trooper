@@ -50,20 +50,20 @@ if (-not $CacheDirectory) {
 }
 $CacheDirectory = [IO.Path]::GetFullPath($CacheDirectory)
 New-Item -ItemType Directory -Force -Path $CacheDirectory | Out-Null
-Get-TTArchive $Pins.clang_url $Pins.clang_sha256 (Join-Path $CacheDirectory 'clang.zip') (Join-Path $CacheDirectory 'clang') "$($Pins.clang_directory)\bin\clang.exe"
-Get-TTArchive $Pins.ninja_url $Pins.ninja_sha256 (Join-Path $CacheDirectory 'ninja.zip') (Join-Path $CacheDirectory 'ninja') 'ninja.exe'
+Get-WindowsSetupArchive $Pins.clang_url $Pins.clang_sha256 (Join-Path $CacheDirectory 'clang.zip') (Join-Path $CacheDirectory 'clang') "$($Pins.clang_directory)\bin\clang.exe"
+Get-WindowsSetupArchive $Pins.ninja_url $Pins.ninja_sha256 (Join-Path $CacheDirectory 'ninja.zip') (Join-Path $CacheDirectory 'ninja') 'ninja.exe'
 $ClangBin = Join-Path $CacheDirectory "clang\$($Pins.clang_directory)\bin"
 $env:Path = "$ClangBin;$(Join-Path $CacheDirectory 'ninja');$(Join-Path $SdkDirectory 'Bin');$env:Path"
 $VDirectory = Join-Path $CacheDirectory 'v'
-Get-TTCheckout 'https://github.com/vlang/v.git' $Pins.v $VDirectory
-Get-TTCheckout 'https://github.com/vlang/vc.git' $Pins.vc (Join-Path $VDirectory 'vc')
+Get-WindowsSetupCheckout 'https://github.com/vlang/v.git' $Pins.v $VDirectory
+Get-WindowsSetupCheckout 'https://github.com/vlang/vc.git' $Pins.vc (Join-Path $VDirectory 'vc')
 $VExecutable = Join-Path $VDirectory 'v.exe'
 if (-not (Test-Path -LiteralPath $VExecutable)) {
     $SavedCFlags = $env:CFLAGS
     Push-Location $VDirectory
     try {
         $env:CFLAGS = '-Wno-incompatible-pointer-types -Wno-incompatible-function-pointer-types'
-        Invoke-TTCommand (Join-Path $VDirectory 'makev.bat') @('-clang', '--local')
+        Invoke-WindowsSetupCommand (Join-Path $VDirectory 'makev.bat') @('-clang', '--local')
     } finally {
         $env:CFLAGS = $SavedCFlags
         Pop-Location
@@ -72,8 +72,8 @@ if (-not (Test-Path -LiteralPath $VExecutable)) {
 $env:Path = "$VDirectory;$env:Path"
 $HeadersDirectory = Join-Path $CacheDirectory 'Vulkan-Headers'
 $VolkDirectory = Join-Path $CacheDirectory 'volk'
-Get-TTCheckout 'https://github.com/KhronosGroup/Vulkan-Headers.git' $Pins.headers $HeadersDirectory
-Get-TTCheckout 'https://github.com/zeux/volk.git' $Pins.volk $VolkDirectory
+Get-WindowsSetupCheckout 'https://github.com/KhronosGroup/Vulkan-Headers.git' $Pins.headers $HeadersDirectory
+Get-WindowsSetupCheckout 'https://github.com/zeux/volk.git' $Pins.volk $VolkDirectory
 $IsolatedSdk = Join-Path $CacheDirectory 'sdk'
 New-Item -ItemType Directory -Force -Path (Join-Path $IsolatedSdk 'Include\volk'), (Join-Path $IsolatedSdk 'Lib') | Out-Null
 Copy-Item -LiteralPath (Join-Path $HeadersDirectory 'include\vulkan'), (Join-Path $HeadersDirectory 'include\vk_video') -Destination (Join-Path $IsolatedSdk 'Include') -Recurse -Force
@@ -90,7 +90,7 @@ function Install-TTModules([string]$ManifestDirectory) {
         $Tag = $Match.Groups[2].Value
         $Directory = Join-Path $env:VMODULES "antono2\$Name"
         $Repository = if ($Name -eq 'vkmemalloc') { 'vulkan_memory_allocator' } else { $Name }
-        Get-TTCheckout "https://github.com/antono2/$Repository.git" $Tag $Directory
+        Get-WindowsSetupCheckout "https://github.com/antono2/$Repository.git" $Tag $Directory
         if ($script:ModuleTags.ContainsKey($Name)) {
             if ($script:ModuleTags[$Name] -ne $Tag) { throw "Conflicting dependency pins for $Name" }
             continue
@@ -103,15 +103,15 @@ $script:ModuleTags = @{}
 Install-TTModules $ProjectDirectory
 $env:V_MACOS_V3_NO_FALLBACK = '1'
 Push-Location $ProjectDirectory
-try { Invoke-TTCommand $VExecutable @('run', 'scripts/check_installed_deps.vsh') } finally { Pop-Location }
+try { Invoke-WindowsSetupCommand $VExecutable @('run', 'scripts/check_installed_deps.vsh') } finally { Pop-Location }
 
 $GlfwDirectory = Join-Path $CacheDirectory 'glfw'
 $GlfwBuild = Join-Path $CacheDirectory 'glfw-build'
 $GlfwInstall = Join-Path $CacheDirectory 'glfw-install'
-Get-TTCheckout 'https://github.com/glfw/glfw.git' $Pins.glfw $GlfwDirectory
-Invoke-TTCommand cmake @('-S', $GlfwDirectory, '-B', $GlfwBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=clang', "-DCMAKE_INSTALL_PREFIX=$GlfwInstall", '-DBUILD_SHARED_LIBS=OFF', '-DGLFW_BUILD_EXAMPLES=OFF', '-DGLFW_BUILD_TESTS=OFF', '-DGLFW_BUILD_DOCS=OFF')
-Invoke-TTCommand cmake @('--build', $GlfwBuild, '--parallel')
-Invoke-TTCommand cmake @('--install', $GlfwBuild)
+Get-WindowsSetupCheckout 'https://github.com/glfw/glfw.git' $Pins.glfw $GlfwDirectory
+Invoke-WindowsSetupCommand cmake @('-S', $GlfwDirectory, '-B', $GlfwBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=clang', "-DCMAKE_INSTALL_PREFIX=$GlfwInstall", '-DBUILD_SHARED_LIBS=OFF', '-DGLFW_BUILD_EXAMPLES=OFF', '-DGLFW_BUILD_TESTS=OFF', '-DGLFW_BUILD_DOCS=OFF')
+Invoke-WindowsSetupCommand cmake @('--build', $GlfwBuild, '--parallel')
+Invoke-WindowsSetupCommand cmake @('--install', $GlfwBuild)
 $env:GLFW_INCLUDE = Join-Path $GlfwInstall 'include'
 $env:GLFW_LIB = Join-Path $GlfwInstall 'lib'
 Write-Host "Prepared Windows toolchain: $CacheDirectory"

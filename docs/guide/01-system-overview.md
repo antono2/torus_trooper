@@ -9,7 +9,7 @@ arrangements.
 ## The boundary first
 
 [`main`](../../torus_trooper.v#L8) parses launch options and chooses
-between [`run_headless`](../../torus_trooper.v#L625) and
+between [`run_headless`](../../torus_trooper.v#L671) and
 [`runtime.new_app`](../../runtime/app.v#L281). In graphical
 mode, `App.run` owns the window loop. In headless mode, `run_headless` constructs
 the same [`sim.Simulation`](../../sim/simulation.v#L258), calls `update` a requested

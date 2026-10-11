@@ -6,7 +6,22 @@ import runtime
 import sim
 
 fn main() {
-	launch_args := effective_arguments('options.ini', os.args[1..])
+	package_dir := packaged_asset_directory(os.executable())
+	options_path := if !os.is_file('options.ini') && package_dir != '' {
+		os.join_path(package_dir, 'options.ini')
+	} else {
+		'options.ini'
+	}
+	mut launch_args := effective_arguments(options_path, os.args[1..])
+	if package_dir != '' && '--headless' !in launch_args {
+		// Native shaders and audio use package-relative paths. Preserve explicit
+		// user file paths before selecting the package as the asset directory.
+		launch_args = absolute_file_arguments(launch_args, os.getwd())
+		os.chdir(package_dir) or {
+			eprintln('could not enter package directory: ${err}')
+			exit(1)
+		}
+	}
 	relaunch_graphical_tinyc_build(launch_args)
 	resolution := resolution_argument(launch_args) or {
 		eprintln(err)
@@ -159,6 +174,37 @@ fn relaunch_graphical_tinyc_build(launch_args []string) {
 	} $else {
 		_ = launch_args
 	}
+}
+
+fn packaged_asset_directory(executable string) string {
+	directory := os.dir(executable)
+	if os.is_file(os.join_path(directory, 'shaders', 'tunnel.vert.spv'))
+		&& os.is_dir(os.join_path(directory, 'sounds')) && os.is_dir(os.join_path(directory, 'models')) {
+		return directory
+	}
+	return ''
+}
+
+fn absolute_file_arguments(arguments []string, caller_directory string) []string {
+	mut result := arguments.clone()
+	file_options := ['--data-file', '--object-sizes-file', '--model-file']
+	for index, argument in arguments {
+		if argument in file_options && index + 1 < arguments.len {
+			if !os.is_abs_path(arguments[index + 1]) {
+				result[index + 1] = os.join_path(caller_directory, arguments[index + 1])
+			}
+		} else {
+			for option in file_options {
+				if argument.starts_with('${option}=') {
+					path := argument.all_after('=')
+					if !os.is_abs_path(path) {
+						result[index] = '${option}=${os.join_path(caller_directory, path)}'
+					}
+				}
+			}
+		}
+	}
+	return result
 }
 
 fn effective_arguments(options_path string, command_arguments []string) []string {

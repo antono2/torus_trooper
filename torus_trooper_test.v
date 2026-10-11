@@ -4,6 +4,25 @@ module main
 import os
 import sim
 
+fn test_packaged_assets_and_explicit_file_paths() {
+	directory := os.join_path(os.temp_dir(), 'torus package paths ${os.getpid()}')
+	defer { os.rmdir_all(directory) or {} }
+	for child in ['shaders', 'sounds', 'models'] {
+		os.mkdir_all(os.join_path(directory, child)) or { panic(err) }
+	}
+	executable := os.join_path(directory, 'game.exe')
+	assert packaged_asset_directory(executable) == ''
+	os.write_file(os.join_path(directory, 'shaders', 'tunnel.vert.spv'), 'fixture') or { panic(err) }
+	assert packaged_asset_directory(executable) == directory
+	absolute := os.join_path(directory, 'absolute.json')
+	arguments := ['--data-file', 'save.json', '--object-sizes-file=sizes.json',
+		'--model-file', absolute, '--probe']
+	resolved := absolute_file_arguments(arguments, directory)
+	assert resolved == ['--data-file', os.join_path(directory, 'save.json'),
+		'--object-sizes-file=${os.join_path(directory, 'sizes.json')}', '--model-file', absolute, '--probe']
+	assert arguments[1] == 'save.json'
+}
+
 fn test_options_file_precedes_command_line_overrides() {
 	directory := os.join_path(os.temp_dir(), 'torus_trooper_options_test_${os.getpid()}')
 	path := os.join_path(directory, 'options.ini')

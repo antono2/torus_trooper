@@ -87,7 +87,11 @@ $IsolatedSdk = Join-Path $CacheDirectory 'sdk'
 New-Item -ItemType Directory -Force -Path (Join-Path $IsolatedSdk 'Include\volk'), (Join-Path $IsolatedSdk 'Lib') | Out-Null
 Copy-Item -LiteralPath (Join-Path $HeadersDirectory 'include\vulkan'), (Join-Path $HeadersDirectory 'include\vk_video') -Destination (Join-Path $IsolatedSdk 'Include') -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $VolkDirectory 'volk.h'), (Join-Path $VolkDirectory 'volk.c') -Destination (Join-Path $IsolatedSdk 'Include\volk') -Force
-Copy-Item -LiteralPath (Join-Path $SdkDirectory 'Lib\vulkan-1.lib') -Destination (Join-Path $IsolatedSdk 'Lib') -Force
+$SourceLibrary = [IO.Path]::GetFullPath((Join-Path $SdkDirectory 'Lib\vulkan-1.lib'))
+$StagedLibrary = [IO.Path]::GetFullPath((Join-Path $IsolatedSdk 'Lib\vulkan-1.lib'))
+if (-not $SourceLibrary.Equals($StagedLibrary, [StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item -LiteralPath $SourceLibrary -Destination $StagedLibrary -Force
+}
 $env:VULKAN_SDK = $IsolatedSdk
 
 $ModuleKey = (Get-FileHash -LiteralPath (Join-Path $ProjectDirectory 'v.mod') -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()

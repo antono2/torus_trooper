@@ -9,7 +9,9 @@ on:
         default: latest
         type: string
 permissions:
-  contents: read
+  # GitHub requires write access to see draft releases, even for downloads.
+  # These jobs only download assets and upload their test logs.
+  contents: write
 jobs:
   package-consumer:
     name: Package consumer (${{ matrix.platform }})

@@ -83,6 +83,33 @@ export V_MACOS_V3_NO_FALLBACK=1
 
 ### Windows
 
+For a first source build, install Git, CMake and the LunarG Vulkan SDK, then run
+from ordinary 64-bit PowerShell in the checkout:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
+.\torus_trooper.exe
+```
+
+The helper downloads checksum-verified MinGW Clang and Ninja, builds the tested
+V3 compiler, checks out the release-pinned V modules and builds static GLFW.
+It keeps these in a versioned cache under `%LOCALAPPDATA%\antono2\torus-trooper`
+and prepares matching Vulkan/Volk headers in an isolated SDK layout. Existing V
+compilers, module directories and SDK headers are not changed. Cached checkouts
+with local changes or mismatched revisions are rejected rather than reset.
+
+Use `-Check` to check installed prerequisites without downloads, `-PrepareOnly`
+to prepare the toolchain without compiling the game, or `-CacheDirectory 'D:\Torus tools'`
+to choose the cache location. `-SdkDirectory` selects an installed Vulkan SDK.
+Rerunning setup reuses the tested cache. Download and compiler pins live in
+[`scripts/windows-toolchain.json`](../scripts/windows-toolchain.json).
+
+Use `-Verify` to run the build's software tests, shader checks, headless run and
+graphical Vulkan probe. This additionally requires Python 3 and the SDK shader
+tools. A Vulkan-capable driver and desktop session are needed for the probe;
+the build and headless simulation do not establish graphical hardware support.
+
+For a manually configured toolchain, the existing build helper remains available.
 Open PowerShell with the CI-compatible V3 compiler, MinGW Clang, V modules and
 `VULKAN_SDK` configured. The Windows helper expects those tools to be installed:
 

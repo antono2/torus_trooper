@@ -71,10 +71,10 @@ try {
         & python scripts/build_shaders.py
         if ($LASTEXITCODE -ne 0) { throw "Shader compilation failed." }
         $TestFlags = $CompilerFlags + @(
-            '-cflags', "-I$(Join-Path $env:VULKAN_SDK 'Include')",
-            '-cflags', "-I$GlfwInclude",
-            '-ldflags', "-L$(Join-Path $env:VULKAN_SDK 'Lib')",
-            '-ldflags', "-L$GlfwLibrary"
+            '-cflags', ('-I"' + (Join-Path $env:VULKAN_SDK 'Include') + '"'),
+            '-cflags', ('-I"' + $GlfwInclude + '"'),
+            '-ldflags', ('-L"' + (Join-Path $env:VULKAN_SDK 'Lib') + '"'),
+            '-ldflags', ('-L"' + $GlfwLibrary + '"')
         )
         $TestDirectory = Join-Path ([IO.Path]::GetTempPath()) ("torus-trooper-tests-" + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $TestDirectory | Out-Null
@@ -90,6 +90,7 @@ try {
                 if ($LASTEXITCODE -ne 0) { throw "Test compilation failed: $TestFile" }
                 $TestProcess = Start-Process -FilePath $TestExecutable `
                     -WorkingDirectory $ProjectDirectory -WindowStyle Hidden -PassThru
+                $null = $TestProcess.Handle
                 if (-not $TestProcess.WaitForExit(120000)) {
                     Stop-Process -Id $TestProcess.Id -Force
                     throw "Test timed out: $TestFile"
@@ -120,6 +121,7 @@ try {
         )) {
             $Process = Start-Process -FilePath $OutputPath -ArgumentList $Arguments `
                 -WorkingDirectory $ProjectDirectory -WindowStyle Hidden -PassThru
+            $null = $Process.Handle
             if (-not $Process.WaitForExit(120000)) {
                 Stop-Process -Id $Process.Id -Force
                 throw "Torus Trooper verification timed out: $($Arguments -join ' ')"

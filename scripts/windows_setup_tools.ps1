@@ -44,7 +44,16 @@ function Get-TTArchive([string]$Url, [string]$Hash, [string]$Archive, [string]$D
     }
     if (-not (Test-Path -LiteralPath $Archive)) {
         Write-Host "Downloading $Url"
-        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Archive
+        $Download = "$Archive.download.zip"
+        if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+            Invoke-TTCommand curl.exe @('--fail', '--location', '--retry', '3', '--connect-timeout', '30', '--max-time', '900', '--silent', '--show-error', '--output', $Download, $Url)
+        } else {
+            Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Download -TimeoutSec 120
+        }
+        if ((Get-FileHash -LiteralPath $Download -Algorithm SHA256).Hash -ne $Hash) {
+            throw "Download checksum mismatch: $Url. Retry setup to download again."
+        }
+        Move-Item -LiteralPath $Download -Destination $Archive -Force
     }
     Expand-TTVerifiedArchive $Archive $Hash $Directory
     if (-not (Test-Path -LiteralPath (Join-Path $Directory $Executable))) {

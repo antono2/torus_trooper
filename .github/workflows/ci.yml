@@ -39,10 +39,14 @@ jobs:
           if (Test-Path $Cache) { throw 'Read-only check created a toolchain cache' }
           ./scripts/setup_windows.ps1 -CacheDirectory $Cache
           ./scripts/setup_windows.ps1 -CacheDirectory $Cache -PrepareOnly
-          ./torus_trooper.exe --headless --ticks 600 --no-sound --volume 0
-          if ($LASTEXITCODE -ne 0) { throw 'Bootstrapped game headless test failed' }
-          ./torus_trooper.exe --probe --no-sound --volume 0
-          if ($LASTEXITCODE -ne 0) { throw 'Bootstrapped game Vulkan probe failed' }
+          foreach ($Arguments in @(@('--headless', '--ticks', '600', '--no-sound', '--volume', '0'), @('--probe', '--no-sound', '--volume', '0'))) {
+            $GameProcess = Start-Process -FilePath (Join-Path $PWD 'torus_trooper.exe') -ArgumentList $Arguments -WorkingDirectory $PWD -WindowStyle Hidden -PassThru
+            if (-not $GameProcess.WaitForExit(120000)) {
+              Stop-Process -Id $GameProcess.Id -Force
+              throw "Bootstrapped game timed out: $Arguments"
+            }
+            if ($GameProcess.ExitCode -ne 0) { throw "Bootstrapped game failed: $Arguments ($($GameProcess.ExitCode))" }
+          }
 
   bridge:
     name: ${{ matrix.os }} C bridge

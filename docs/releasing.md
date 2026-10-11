@@ -27,7 +27,8 @@ gh release create v0.23.1 --repo antono2/torus_trooper --verify-tag --draft --ti
 ```
 
 Before publication, run **Published desktop package consumers** manually with
-the draft tag. Authenticated CI can download draft assets and checks their
+the draft tag. Draft visibility requires the workflow's `contents: write`
+permission, although the consumer jobs only download assets. Authenticated CI checks their
 checksums and runtime behavior on both OSes. Publish only after those jobs pass:
 
 ```sh

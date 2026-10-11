@@ -25,7 +25,7 @@ if [[ ! -f /usr/include/volk.h ]] && ! printf '#include <volk.h>\n' | gcc -E -x 
     exit 1
 fi
 
-# Separate module caches when manifest pins change, retaining the compiler.
+# Separate module caches inside an explicitly selected toolchain directory.
 modules_key=$(git hash-object "$project_dir/v.mod")
 modules_dir=$toolchain_dir/modules-$modules_key
 

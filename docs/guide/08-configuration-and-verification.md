@@ -8,11 +8,11 @@ regression evidence from production performance and compatibility evidence.
 
 ## Resolve configuration in a known order
 
-[`effective_arguments`](../../torus_trooper.v#L164) reads whitespace-separated
+[`effective_arguments`](../../torus_trooper.v#L210) reads whitespace-separated
 options from `options.ini`, then appends command-line arguments. Parsers for
 options that can be overridden scan the resulting list and let later entries
 win. `main` validates values before constructing `AppConfig` or entering
-headless mode. [`torus_trooper_test.v`](../../torus_trooper_test.v#L7) checks that
+headless mode. [`torus_trooper_test.v`](../../torus_trooper_test.v#L26) checks that
 a command-line resolution, grade, level and other settings override earlier
 file values. An invalid resolution exits with status 2 before window creation.
 

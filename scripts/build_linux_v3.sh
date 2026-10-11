@@ -3,22 +3,29 @@
 set -euo pipefail
 
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-toolchain_dir=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/c0449e860641}
-v_dir=$toolchain_dir/v
-headers_dir=$toolchain_dir/Vulkan-Headers
-
-for command in git make gcc; do
+for command in git make gcc python3; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "Missing $command. Install the Linux build prerequisites first." >&2
         exit 1
     fi
 done
+python3 "$project_dir/scripts/compatibility.py" --platform linux >/dev/null
+pin() { python3 "$project_dir/scripts/compatibility.py" --platform linux --get "$1"; }
+v_commit=$(pin v)
+vc_commit=$(pin vc)
+tcc_commit=$(pin tcc)
+headers_commit=$(pin headers)
+memory_tag=$(pin module_memory)
+compatibility_key=$(sha256sum "$project_dir/compatibility.json" | cut -c1-12)
+toolchain_dir=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/$compatibility_key}
+v_dir=$toolchain_dir/v
+headers_dir=$toolchain_dir/Vulkan-Headers
 if [[ ! -f /usr/include/volk.h ]] && ! printf '#include <volk.h>\n' | gcc -E -x c - >/dev/null 2>&1; then
     echo 'Missing volk.h. Install libvulkan-volk-dev (or an equivalent Volk development package).' >&2
     exit 1
 fi
 
-# Separate module caches when manifest pins change, retaining the compiler.
+# Separate module caches inside an explicitly selected toolchain directory.
 modules_key=$(git hash-object "$project_dir/v.mod")
 modules_dir=$toolchain_dir/modules-$modules_key
 
@@ -43,15 +50,15 @@ clone_pinned() {
 }
 
 clone_pinned https://github.com/KhronosGroup/Vulkan-Headers.git \
-    6802bb4733b63ed5efd3adb308a6c885ef180ea1 "$headers_dir"
+    "$headers_commit" "$headers_dir"
 
 clone_pinned https://github.com/vlang/v.git \
-    c0449e86064168aabb4c6c4505c5b5b5ad4fdbc1 "$v_dir"
+    "$v_commit" "$v_dir"
 clone_pinned https://github.com/vlang/vc.git \
-    8af812feb76c678abd86a8e682fd9ab2790e519c "$v_dir/vc"
+    "$vc_commit" "$v_dir/vc"
 
 clone_pinned https://github.com/vlang/tccbin.git \
-    d6e7ac1b1bcc98aed734a6ecbfa8509f24606c74 "$v_dir/thirdparty/tcc"
+    "$tcc_commit" "$v_dir/thirdparty/tcc"
 if [[ ! -x "$v_dir/v" ]]; then
     make -C "$v_dir" local=1
 fi
@@ -77,13 +84,15 @@ clone_pinned https://github.com/antono2/opencl.git \
 clone_pinned https://github.com/antono2/vulkan_memory_allocator.git \
     "$(module_tag antono2.vkmemalloc)" "$modules_dir/antono2/vkmemalloc"
 clone_pinned https://github.com/antono2/memory.git \
-    v1.4.0 "$modules_dir/antono2/memory"
+    "$memory_tag" "$modules_dir/antono2/memory"
 
 export VMODULES=$modules_dir
 export VULKAN_SDK=$headers_dir
 export V_MACOS_V3_NO_FALLBACK=1
 export V_C_ERROR_BUG_REPORT_DISABLED=1
 cd -- "$project_dir"
+python3 scripts/compatibility.py --platform linux --modules "$modules_dir"
+"$v_dir/v" run scripts/check_installed_deps.vsh
 "$v_dir/v" -cc gcc -o torus_trooper .
 echo "Built $project_dir/torus_trooper with pinned V3 and Vulkan headers."
 echo 'Run silently with: ./torus_trooper --no-sound --volume 0'

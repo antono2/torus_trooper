@@ -8,5 +8,16 @@
   "clang_sha256": "e3ad77d117a4bea19a7a3b333341824d79a5a371004a10e25b8504e7b3047666",
   "clang_directory": "llvm-mingw-20260922-ucrt-x86_64",
   "ninja_url": "https://github.com/ninja-build/ninja/releases/download/v1.13.1/ninja-win.zip",
-  "ninja_sha256": "26a40fa8595694dec2fad4911e62d29e10525d2133c9a4230b66397774ae25bf"
+  "ninja_sha256": "26a40fa8595694dec2fad4911e62d29e10525d2133c9a4230b66397774ae25bf",
+  "schema_version": 1,
+  "linux_vc": "8af812feb76c678abd86a8e682fd9ab2790e519c",
+  "linux_tcc": "d6e7ac1b1bcc98aed734a6ecbfa8509f24606c74",
+  "ci_sdk": "1.4.309.0",
+  "ci_runtime": "v1.2",
+  "modules": {
+    "opencl": "v1.0.2",
+    "vulkan": "v3.2.2",
+    "vkmemalloc": "v2.6.2",
+    "memory": "v1.4.0"
+  }
 }

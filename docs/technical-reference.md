@@ -33,8 +33,9 @@ packages do not require a V compiler or development headers.
 
 ## Desktop build requirements
 
-The [CI workflow](../.github/workflows/ci.yml) records the tested compiler,
-module and native dependency revisions.
+The [compatibility manifest](../compatibility.json) records the tested compiler,
+module and native dependency revisions consumed by setup and CI. See
+[compatibility and package validation](compatibility.md) for upgrade checks.
 
 | Component | Source-build requirement |
 | --- | --- |
@@ -56,7 +57,7 @@ package. Audio initialization failures are logged; the game can continue silentl
 
 ### Linux
 
-Install `git`, `make`, `gcc`, `libglfw3-dev`, `libvulkan-dev` and
+Install `git`, `make`, `gcc`, `python3`, `libglfw3-dev`, `libvulkan-dev` and
 `libvulkan-volk-dev` on Debian or Ubuntu, along with a suitable graphics driver.
 Then build and launch:
 
@@ -69,14 +70,15 @@ The helper downloads and builds the pinned upstream compiler, then fetches the
 V modules and Vulkan headers into an isolated cache. An existing
 V installation is not required. Later builds reuse that cache.
 
-The default cache is `${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/c0449e860641`;
+The default cache is `${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/<manifest-hash>`;
 `TT_V3_TOOLCHAIN_DIR` overrides it. To use the same toolchain for the direct
 build and test commands below, configure the current shell:
 
 ```sh
-tt_toolchain=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/c0449e860641}
+tt_compatibility_key=$(sha256sum compatibility.json | cut -c1-12)
+tt_toolchain=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/$tt_compatibility_key}
 export PATH="$tt_toolchain/v:$PATH"
-export VMODULES="$tt_toolchain/modules"
+export VMODULES="$tt_toolchain/modules-$(git hash-object v.mod)"
 export VULKAN_SDK="$tt_toolchain/Vulkan-Headers"
 export V_MACOS_V3_NO_FALLBACK=1
 ```
@@ -102,7 +104,7 @@ Use `-Check` to check installed prerequisites without downloads, `-PrepareOnly`
 to prepare the toolchain without compiling the game, or `-CacheDirectory 'D:\Torus tools'`
 to choose the cache location. `-SdkDirectory` selects an installed Vulkan SDK.
 Rerunning setup reuses the tested cache. Download and compiler pins live in
-[`scripts/windows-toolchain.json`](../scripts/windows-toolchain.json).
+[`compatibility.json`](../compatibility.json).
 
 Use `-Verify` to run the build's software tests, shader checks, headless run and
 graphical Vulkan probe. This additionally requires Python 3 and the SDK shader

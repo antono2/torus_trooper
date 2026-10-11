@@ -13,8 +13,14 @@ if (-not [Environment]::Is64BitProcess) { throw 'Use 64-bit PowerShell.' }
 if ($Check -and ($PrepareOnly -or $Verify)) { throw '-Check cannot be combined with -PrepareOnly or -Verify.' }
 $ProjectDirectory = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot 'windows_setup_tools.ps1')
-$PinFile = Join-Path $PSScriptRoot 'windows-toolchain.json'
+$PinFile = Join-Path $ProjectDirectory 'compatibility.json'
 $Pins = Get-Content -LiteralPath $PinFile -Raw | ConvertFrom-Json
+if ($Pins.schema_version -ne 1) { throw 'Unsupported compatibility manifest schema.' }
+$RootManifest = Get-Content -LiteralPath (Join-Path $ProjectDirectory 'v.mod') -Raw
+foreach ($Match in [regex]::Matches($RootManifest, "'antono2\.([a-z0-9_]+)@([^']+)'")) {
+    $Name = $Match.Groups[1].Value
+    if ($Pins.modules.$Name -ne $Match.Groups[2].Value) { throw "v.mod and compatibility.json disagree for $Name" }
+}
 foreach ($Command in @('git', 'cmake')) {
     if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
         throw "Install $Command and add it to PATH, then rerun setup."

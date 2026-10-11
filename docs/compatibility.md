@@ -17,7 +17,10 @@ The package consumers download build artifacts onto separate runners. Linux
 launches in an Ubuntu 24.04 container with Python, Xvfb and Vulkan runtime tools,
 without V, CMake, a C compiler or system GLFW. Windows launches on a separate
 hosted VM with a runtime-only PATH and development variables removed; the VM
-still includes operating-system components. Software Vulkan provides CI graphics.
+still includes operating-system components. Because the Windows VM has no GPU
+driver installation, the harness stages only `vulkan-1.dll` as the OS Vulkan
+runtime in an isolated directory. No SDK headers or other SDK/build DLLs are
+available to the application. Software Vulkan provides CI graphics.
 These jobs validate packaging, not physical GPU compatibility.
 
 Each consumer extracts and relocates the package into a directory containing

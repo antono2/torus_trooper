@@ -7,6 +7,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import signal
+import shutil
 import stat
 import subprocess
 import tarfile
@@ -112,11 +113,15 @@ def main():
     parser.add_argument('archive', type=Path)
     parser.add_argument('--project', choices=['torus', 'imgui'], required=True)
     parser.add_argument('--checksums', type=Path)
+    parser.add_argument('--vulkan-loader', type=Path,
+                        help='Windows CI only: supply the OS Vulkan runtime when the runner has no GPU driver')
     parser.add_argument('--logs', type=Path, default=Path('package-smoke-logs'))
     parser.add_argument('--timeout', type=int, default=120)
     args = parser.parse_args()
     if args.timeout <= 0:
         parser.error('--timeout must be positive')
+    if args.vulkan_loader and os.name != 'nt':
+        parser.error('--vulkan-loader is only supported on Windows')
     archive = args.archive.resolve(strict=True)
     if args.checksums:
         verify_checksum(archive, args.checksums)
@@ -137,6 +142,13 @@ def main():
         home = work / 'clean user'
         home.mkdir()
         env = runtime_environment(home)
+        if args.vulkan_loader:
+            # A normal Vulkan GPU driver supplies this OS runtime. The CI VM
+            # uses software graphics: stage only its loader, never SDK/build DLLs.
+            runtime = work / 'Vulkan runtime'
+            runtime.mkdir()
+            shutil.copyfile(args.vulkan_loader.resolve(strict=True), runtime / 'vulkan-1.dll')
+            env['PATH'] += os.pathsep + str(runtime)
         extension = '.exe' if os.name == 'nt' else ''
         if args.project == 'torus':
             launcher = package / ('torus_trooper.exe' if os.name == 'nt' else 'play.sh')

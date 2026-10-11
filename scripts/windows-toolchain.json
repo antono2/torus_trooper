@@ -1,0 +1,12 @@
+{
+  "v": "c0449e86064168aabb4c6c4505c5b5b5ad4fdbc1",
+  "vc": "2cbaf6bc2367937cd5f0b4ef923d1ef9aad613b3",
+  "headers": "6802bb4733b63ed5efd3adb308a6c885ef180ea1",
+  "volk": "58689c063427f5bad4f133625049b1a3c5dd8287",
+  "glfw": "3.4",
+  "clang_url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20260922/llvm-mingw-20260922-ucrt-x86_64.zip",
+  "clang_sha256": "e3ad77d117a4bea19a7a3b333341824d79a5a371004a10e25b8504e7b3047666",
+  "clang_directory": "llvm-mingw-20260922-ucrt-x86_64",
+  "ninja_url": "https://github.com/ninja-build/ninja/releases/download/v1.13.1/ninja-win.zip",
+  "ninja_sha256": "26a40fa8595694dec2fad4911e62d29e10525d2133c9a4230b66397774ae25bf"
+}

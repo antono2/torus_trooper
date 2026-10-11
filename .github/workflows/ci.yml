@@ -16,6 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  windows-setup:
+    name: Fresh Windows setup from ordinary PowerShell
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: antono2/vulkan
+          ref: v3.2.2
+          path: ci-inputs/vulkan
+      - name: Install software Vulkan runtime for the graphical probe
+        shell: bash
+        run: bash ci-inputs/vulkan/.github/scripts/setup-vulkan-ci.sh 1.4.309.0 v1.2
+      - name: Test bootstrap and build from a fresh cache
+        shell: powershell
+        run: |
+          ./scripts/test_windows_setup.ps1
+          $Cache = Join-Path $env:RUNNER_TEMP 'Torus toolchain with spaces'
+          ./scripts/setup_windows.ps1 -Check -CacheDirectory $Cache
+          if (Test-Path $Cache) { throw 'Read-only check created a toolchain cache' }
+          ./scripts/setup_windows.ps1 -CacheDirectory $Cache
+          ./scripts/setup_windows.ps1 -CacheDirectory $Cache -PrepareOnly
+          ./torus_trooper.exe --headless --ticks 600 --no-sound --volume 0
+          if ($LASTEXITCODE -ne 0) { throw 'Bootstrapped game headless test failed' }
+          ./torus_trooper.exe --probe --no-sound --volume 0
+          if ($LASTEXITCODE -ne 0) { throw 'Bootstrapped game Vulkan probe failed' }
+
   bridge:
     name: ${{ matrix.os }} C bridge
     runs-on: ${{ matrix.os }}

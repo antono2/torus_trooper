@@ -63,8 +63,8 @@
   "sim/simulation_test.v#L35": "fn test_disappearing_bullet_reserves_its_pool_slot_for_45_ticks() {",
   "sim/simulation_test.v#L73": "fn test_subsystem_random_streams_start_equal_and_advance_independently() {",
   "sim/stage.v#L6": "pub struct StageProgression {",
-  "torus_trooper.v#L164": "fn effective_arguments(options_path string, command_arguments []string) []string {",
-  "torus_trooper.v#L625": "fn run_headless(grade sim.Grade, starting_level int, compute_backend sim.ComputeBackend,",
+  "torus_trooper.v#L210": "fn effective_arguments(options_path string, command_arguments []string) []string {",
+  "torus_trooper.v#L671": "fn run_headless(grade sim.Grade, starting_level int, compute_backend sim.ComputeBackend,",
   "torus_trooper.v#L8": "fn main() {",
-  "torus_trooper_test.v#L7": "fn test_options_file_precedes_command_line_overrides() {"
+  "torus_trooper_test.v#L26": "fn test_options_file_precedes_command_line_overrides() {"
 }

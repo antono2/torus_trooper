@@ -27,6 +27,8 @@ jobs:
         shell: bash
         run: |
           python scripts/test_distribution.py
+          python scripts/test_doctor.py
+          python scripts/test_prepare_release.py
           python scripts/compatibility.py --github-output "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -189,9 +191,9 @@ jobs:
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate
-        run: bash scripts/package_linux.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
+        run: bash scripts/package_linux.sh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe Linux package without host runtime libraries
-        run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-0.23.0-linux-x86_64.tar.gz
+        run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe package on Ubuntu 26.04 without installing GLFW
         run: |
           xvfb-run -a bash -c '
@@ -199,7 +201,7 @@ jobs:
               -e DISPLAY -e XAUTHORITY=/tmp/game-xauthority \
               -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
               -v "$XAUTHORITY:/tmp/game-xauthority:ro" \
-              -v "$PWD/torus-trooper-0.23.0-linux-x86_64.tar.gz:/candidate.tar.gz:ro" \
+              -v "$PWD/torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz:/candidate.tar.gz:ro" \
               ubuntu:26.04 bash -ec "
                 apt-get update
                 apt-get install -y --no-install-recommends mesa-vulkan-drivers
@@ -213,7 +215,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: torus-trooper-linux-x86_64
-          path: torus-trooper-0.23.0-linux-x86_64.tar.gz
+          path: torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
           if-no-files-found: error
 
   windows-v-tests:
@@ -314,7 +316,22 @@ jobs:
           $Destination = Join-Path $env:VULKAN_SDK 'Include\volk'
           New-Item -ItemType Directory -Force $Destination | Out-Null
           Copy-Item dependencies/volk/volk.h, dependencies/volk/volk.c $Destination
+      - name: Resolve native binary cache identity
+        id: native-cache
+        shell: pwsh
+        run: |
+          $Commit = (& git -C $env:VCPKG_INSTALLATION_ROOT rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify vcpkg ports revision' }
+          "commit=$Commit" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'vcpkg-binary-cache') | Out-Null
+      - name: Cache ABI-checked native packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-binary-cache
+          key: windows-vcpkg-${{ steps.native-cache.outputs.commit }}-${{ hashFiles('compatibility.json') }}
       - name: Install GLFW and shader tools
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg-binary-cache,readwrite
         shell: pwsh
         run: |
           vcpkg install glfw3:x64-mingw-static 'glslang[tools]:x64-windows' 'spirv-tools[tools]:x64-windows'
@@ -336,10 +353,10 @@ jobs:
         shell: pwsh
         run: |
           $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
-          python scripts/package_windows.py torus-trooper-0.23.0-windows-x86_64.zip $Executable
+          python scripts/package_windows.py torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip $Executable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $Extracted = Join-Path $env:RUNNER_TEMP 'torus-trooper-package'
-          Expand-Archive torus-trooper-0.23.0-windows-x86_64.zip $Extracted
+          Expand-Archive torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip $Extracted
           $Package = Join-Path $Extracted 'torus-trooper'
           $Probe = Start-Process -FilePath (Join-Path $Package 'torus_trooper.exe') `
             -ArgumentList @('--probe', '--no-sound', '--volume', '0') `
@@ -352,7 +369,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: torus-trooper-windows-x86_64
-          path: torus-trooper-0.23.0-windows-x86_64.zip
+          path: torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip
           if-no-files-found: error
 
   package-consumer:

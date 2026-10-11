@@ -43,3 +43,24 @@ probe because its shaders use working-directory-relative paths. The source fix
 selects assets beside the executable and preserves explicit user file paths.
 Rebuilding and publishing a later package is required to deliver this fix to
 release-download users; existing release assets are not replaced by these tests.
+
+## Diagnose and recover setup
+
+Run `python scripts/doctor.py --v PATH_TO_TESTED_V --modules MODULE_DIRECTORY`
+for compiler, tools and installed-release checks. Add `--runtime` to enumerate
+Vulkan devices, or `--json` to capture a support report. Diagnostics do not repair
+caches or change environment variables. GPU enumeration does not establish video
+decode or OpenCL interoperability support.
+
+Windows setup stages new Git checkouts and tool extraction beside the destination,
+then commits them only after success. Retry an interrupted download/clone with
+the same command. Existing unverified, modified or damaged cache directories are
+preserved: choose a fresh `-CacheDirectory` and retain the old one for inspection.
+A cached archive with a wrong checksum is identified by path; remove only that
+archive after inspecting the failure, then retry. Regression fixtures cover these
+failure and recovery paths without downloading real tools.
+
+CI caches vcpkg binary packages by the exact ports commit and compatibility
+manifest. vcpkg still validates package ABIs and installs the requested triplets;
+compiler upgrades cannot reuse an unchecked installed-directory snapshot.
+See [releasing](releasing.md) for collecting and publishing exact tested archives.

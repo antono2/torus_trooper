@@ -2,7 +2,7 @@ Module {
 	name: 'torus_trooper'
 	author: 'Anton Oreskin'
 	description: 'Deterministic 3D arcade shooter with Vulkan graphics for desktop'
-	version: '0.23.0'
+	version: '0.23.1'
 	license: 'MIT'
 	repo_url: 'https://github.com/antono2/torus_trooper'
 	dependencies: [

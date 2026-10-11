@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.23.1
+
+- Launch Windows packages from shortcuts or unrelated working directories while
+  keeping explicit save/model file paths relative to the caller.
+- Add isolated Windows/Linux package-consumer tests and compatibility manifests.
+- Make Windows tool-cache preparation transactional and preserve existing caches
+  when a download, checkout or extraction fails.
 
 - Keep menu/replay fades and game-over delays consistent across display frame
   rates, including after a slow frame.

@@ -24,6 +24,10 @@ def resolve(root, platform, variant='docking', compiler='stable'):
         if pins['modules'].get(name) != tag:
             raise ValueError(f'v.mod and compatibility.json disagree for {name}: {tag}')
     outputs = {key: value for key, value in pins.items() if isinstance(value, str)}
+    version = re.search(r"version:\s*'([0-9]+\.[0-9]+\.[0-9]+)'", (root / 'v.mod').read_text())
+    if not version:
+        raise ValueError('v.mod must declare a release version')
+    outputs['project_version'] = version[1]
     for name, tag in pins['modules'].items():
         if not re.fullmatch(r'[a-z0-9_]+', name) or not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-standard)?', tag):
             raise ValueError(f'Invalid module pin: {name}={tag}')

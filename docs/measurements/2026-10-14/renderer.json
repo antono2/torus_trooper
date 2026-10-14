@@ -1,0 +1,77 @@
+{
+  "source_commit": "de46132bcde52f85c9055b9de6b4aead3774ae79",
+  "records": [
+    {
+      "startup_ms": 157.269,
+      "pipeline_ms": 2.601,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 1
+    },
+    {
+      "startup_ms": 151.292,
+      "pipeline_ms": 2.346,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 2
+    },
+    {
+      "startup_ms": 157.106,
+      "pipeline_ms": 2.346,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 3
+    },
+    {
+      "startup_ms": 153.233,
+      "pipeline_ms": 2.313,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 4
+    },
+    {
+      "startup_ms": 160.886,
+      "pipeline_ms": 2.576,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 5
+    },
+    {
+      "startup_ms": 146.515,
+      "pipeline_ms": 2.541,
+      "pipelines": 8.0,
+      "samples": 370.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.797618,
+      "post_ms": 0.367104,
+      "kind": "gameplay"
+    }
+  ],
+  "note": "Five startup probes and one short Normal-gameplay capture. Profiling implementation was uncommitted at measurement time; final implementation was validated separately."
+}

@@ -1,0 +1,121 @@
+module sim
+
+import antono2.opencl as cl
+import json2
+import time
+
+struct BindingBenchmark {
+ kind string
+ device string
+ driver string
+ slots int
+ active int
+ repetitions int
+ startup_ms f64
+ source_us f64
+ binary_us f64
+ cpu_us f64
+ opencl_us f64
+ verification_us f64
+}
+
+fn benchmark_median(mut values []f64) f64 {
+ values.sort()
+ return values[values.len / 2]
+}
+
+fn benchmark_program_kernels(program &cl.OwnedProgram) ! {
+ for name in ['mark_particle_slots', 'scatter_particles', 'mark_bullet_slots',
+ 'scatter_bullets', 'mark_shot_slots', 'scatter_shots', 'mark_enemy_slots',
+ 'scatter_enemies', 'mark_collision_candidates', 'scatter_collision_candidates',
+ 'mark_collision_points', 'scatter_collision_points', 'scan_active_flags',
+ 'step_particles', 'step_bullets', 'step_shots', 'step_enemies'] {
+  mut kernel := program.kernel(name)!
+  kernel.close()!
+ }
+}
+
+fn test_measure_binding_updates() ! {
+ started := time.now()
+ mut compute := new_opencl_compute()!
+ defer { compute.close() }
+ startup_ms := f64(time.since(started).nanoseconds()) / 1e6
+ mut session := cl.new_session(cl.SessionOptions{
+  requirements: cl.DeviceRequirements{ preferred_types: [cl.device_type_gpu, cl.device_type_all] }
+ })!
+ defer { session.close() or {} }
+ println('BENCH ' + json2.encode(BindingBenchmark{
+  kind: 'startup'
+  device: session.device.name
+  driver: session.device.driver
+  startup_ms: startup_ms
+ }))
+ mut original := cl.build_source_program(session.context, session.device.device, opencl_motion_source, '')!
+ binary := cl.ProgramBinary{
+  key: cl.program_cache_key(session.device, opencl_motion_source, '')
+  data: original.binary()!
+ }
+ original.close()!
+ mut source_times := []f64{}
+ mut binary_times := []f64{}
+ for _ in 0 .. 9 {
+  source_started := time.now()
+  mut source := cl.build_source_program(session.context, session.device.device, opencl_motion_source, '')!
+  benchmark_program_kernels(source)!
+  source_times << f64(time.since(source_started).nanoseconds()) / 1e3
+  source.close()!
+  binary_started := time.now()
+  cached := cl.build_cached_program(session.context, session.device, opencl_motion_source, '', binary)!
+  assert cached.cache_hit
+  benchmark_program_kernels(cached.program)!
+  binary_times << f64(time.since(binary_started).nanoseconds()) / 1e3
+  mut loaded := cached.program
+  loaded.close()!
+ }
+ println('BENCH ' + json2.encode(BindingBenchmark{
+  kind: 'program'
+  repetitions: source_times.len
+  source_us: benchmark_median(mut source_times)
+  binary_us: benchmark_median(mut binary_times)
+ }))
+ for slots in [256, 1024, 4096, 16384] {
+  mut simulation := new_simulation(SimulationConfig{ particle_capacity: slots })
+  for index in 0 .. slots {
+   simulation.particles[index] = Particle{
+    alive: index % 4 != 0
+    position: Vec2{ x: f32(index % 100) * 0.01, y: f32(index) * 0.002 }
+    velocity: Vec2{ x: 0.00125, y: -0.0025 }
+    life: 1000
+   }
+  }
+  mut cpu_times := []f64{}
+  mut device_times := []f64{}
+  mut comparison_times := []f64{}
+  for iteration in 0 .. 28 {
+   cpu_started := time.now()
+   mut cpu := simulation.particle_motion_snapshot()
+   assert cpu_step_particle_motion(mut cpu)
+   cpu_us := f64(time.since(cpu_started).nanoseconds()) / 1e3
+   device_started := time.now()
+   device := compute.compact_and_step_particles(simulation.particles)!
+   device_us := f64(time.since(device_started).nanoseconds()) / 1e3
+   comparison_started := time.now()
+   assert compare_particle_motion(cpu, device, 0).matches()
+   comparison_us := f64(time.since(comparison_started).nanoseconds()) / 1e3
+   if iteration >= 3 {
+    cpu_times << cpu_us
+    device_times << device_us
+    comparison_times << comparison_us
+   }
+  }
+  println('BENCH ' + json2.encode(BindingBenchmark{
+   kind: 'particles'
+   slots: slots
+   active: slots * 3 / 4
+   repetitions: cpu_times.len
+   cpu_us: benchmark_median(mut cpu_times)
+   opencl_us: benchmark_median(mut device_times)
+   verification_us: benchmark_median(mut comparison_times)
+  }))
+ }
+}

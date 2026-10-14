@@ -16,6 +16,11 @@
 #include <stddef.h>
 #include <ctype.h>
 #include "../shaders/hud_state.h"
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 #define TT_MAX_DEVICES 16
 #define TT_FRAMES_IN_FLIGHT 2
@@ -124,10 +129,25 @@ typedef struct TTFrameResources {
     VkCommandBuffer command;
     VkSemaphore image_available;
     VkFence in_flight;
+    VkQueryPool profile_queries;
+    bool profile_pending;
 } TTFrameResources;
 
 typedef struct TTPlatform {
     GLFWwindow *window;
+    bool profiling;
+    VkPipelineCache pipeline_cache;
+    bool pipeline_cache_loaded;
+    char pipeline_cache_file[4096];
+    bool debug_labels_enabled;
+    PFN_vkCmdBeginDebugUtilsLabelEXT begin_label;
+    PFN_vkCmdEndDebugUtilsLabelEXT end_label;
+    uint32_t timestamp_bits;
+    float timestamp_period;
+    uint64_t profile_samples;
+    double scene_ns, post_ns;
+    double pipeline_seconds, startup_seconds;
+    uint32_t pipeline_calls;
     bool replay_library_open;
     bool replay_text_edit;
     int replay_events[128];
@@ -582,6 +602,46 @@ static bool tt_upload_mapped_buffer(TTMappedBuffer *buffer, uint32_t frame_index
     return tt_upload_mapped_buffer_at(buffer, frame_index, 0, data, size);
 }
 
+static uint64_t tt_profile_delta_ticks(uint64_t start, uint64_t end, uint32_t valid_bits) {
+    if (!valid_bits) return 0;
+    uint64_t mask = valid_bits >= 64 ? UINT64_MAX
+                  : (UINT64_C(1) << valid_bits) - 1;
+    return (end - start) & mask;
+}
+
+// Queries belong to a frame slot and are read only after that slot's fence.
+// Availability and timestamp width are explicit; unsupported profiling is optional.
+static void tt_collect_profile(TTPlatform *platform, TTFrameResources *frame) {
+    if (!frame->profile_queries || !frame->profile_pending) return;
+    uint64_t samples[3][2] = {{0}};
+    VkResult result = vkGetQueryPoolResults(platform->device, frame->profile_queries,
+        0, 3, sizeof(samples), samples, sizeof(samples[0]),
+        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT);
+    frame->profile_pending = false;
+    if (result != VK_SUCCESS || !samples[0][1] || !samples[1][1] || !samples[2][1])
+        return;
+    platform->scene_ns += (double)tt_profile_delta_ticks(samples[0][0], samples[1][0],
+                          platform->timestamp_bits) * platform->timestamp_period;
+    platform->post_ns += (double)tt_profile_delta_ticks(samples[1][0], samples[2][0],
+                         platform->timestamp_bits) * platform->timestamp_period;
+    platform->profile_samples++;
+}
+
+static void tt_begin_profile_label(TTPlatform *platform, VkCommandBuffer command,
+                                   const char *name) {
+    if (!platform->begin_label) return;
+    VkDebugUtilsLabelEXT info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pLabelName = name,
+        .color = {0.22f, 0.82f, 1.0f, 1.0f},
+    };
+    platform->begin_label(command, &info);
+}
+
+static void tt_end_profile_label(TTPlatform *platform, VkCommandBuffer command) {
+    if (platform->end_label) platform->end_label(command);
+}
+
 static bool tt_prepare_frame_upload(TTPlatform *platform) {
     if (platform->upload_frame_ready) return true;
     TTFrameResources *frame = &platform->frames[platform->frame_index];
@@ -591,6 +651,7 @@ static bool tt_prepare_frame_upload(TTPlatform *platform) {
         tt_set_vk_error("vkWaitForFences", result);
         return false;
     }
+    tt_collect_profile(platform, frame);
     platform->upload_frame_ready = true;
     return true;
 }
@@ -692,10 +753,24 @@ static bool tt_create_frame_resources(TTPlatform *platform, TTFrameResources *fr
         tt_set_vk_error("vkCreateFence(in flight)", result);
         return false;
     }
+    if (platform->profiling && platform->timestamp_bits) {
+        VkQueryPoolCreateInfo query_info = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = 3,
+        };
+        result = vkCreateQueryPool(platform->device, &query_info, NULL,
+                                   &frame->profile_queries);
+        if (result != VK_SUCCESS) {
+            frame->profile_queries = VK_NULL_HANDLE;
+            fprintf(stderr, "GPU profile: timestamp query allocation unavailable (%d)\n", result);
+        }
+    }
     return true;
 }
 
 static void tt_destroy_frame_resources(VkDevice device, TTFrameResources *frame) {
+    if (frame->profile_queries) vkDestroyQueryPool(device, frame->profile_queries, NULL);
     if (frame->image_available)
         vkDestroySemaphore(device, frame->image_available, NULL);
     if (frame->in_flight)
@@ -1047,6 +1122,118 @@ static bool tt_inspect_devices(TTPlatform *platform) {
     return true;
 }
 
+static uint64_t tt_pipeline_cache_checksum(const unsigned char *data, size_t size) {
+    uint64_t value = UINT64_C(14695981039346656037);
+    for (size_t i = 0; i < size; ++i) {
+        value ^= data[i];
+        value *= UINT64_C(1099511628211);
+    }
+    return value;
+}
+
+// Optional application cache: native driver data is accepted only for this
+// device/vendor/UUID. Missing, stale or rejected data falls back to an empty cache.
+static void tt_initialize_pipeline_cache(TTPlatform *platform,
+                                         const VkPhysicalDeviceProperties *properties) {
+    const char *path = platform->pipeline_cache_file;
+    if (!path || !path[0]) return;
+    size_t length = strlen(path);
+    bool absolute = path[0] == '/';
+#ifdef _WIN32
+    absolute = absolute || (length > 2 && isalpha((unsigned char)path[0]) && path[1] == ':' &&
+                             (path[2] == '/' || path[2] == '\\')) ||
+                            (length > 1 && path[0] == '\\' && path[1] == '\\');
+#endif
+    if (!absolute || length >= sizeof(platform->pipeline_cache_file)) {
+        fprintf(stderr, "Pipeline cache requires an absolute path of fewer than 4096 bytes.\n");
+        return;
+    }
+    void *data = NULL;
+    size_t size = 0;
+    FILE *file = fopen(path, "rb");
+    if (file) {
+        if (fseek(file, 0, SEEK_END) == 0) {
+            long bytes = ftell(file);
+            if (bytes >= 16 + (long)sizeof(VkPipelineCacheHeaderVersionOne) && bytes <= 16 + 16 * 1024 * 1024 &&
+                fseek(file, 0, SEEK_SET) == 0) {
+                unsigned char envelope[16] = {0};
+                size_t payload = (size_t)bytes - sizeof(envelope);
+                uint64_t checksum = 0;
+                bool read_header = fread(envelope, 1, sizeof(envelope), file) == sizeof(envelope);
+                memcpy(&checksum, envelope + 8, sizeof(checksum));
+                data = malloc(payload);
+                if (read_header && memcmp(envelope, "TTPCACHE", 8) == 0 && data &&
+                    fread(data, 1, payload, file) == payload &&
+                    tt_pipeline_cache_checksum(data, payload) == checksum) {
+                    VkPipelineCacheHeaderVersionOne header;
+                    memcpy(&header, data, sizeof(header));
+                    if (header.headerSize >= sizeof(header) && header.headerSize <= (uint32_t)payload &&
+                        header.headerVersion == VK_PIPELINE_CACHE_HEADER_VERSION_ONE &&
+                        header.vendorID == properties->vendorID && header.deviceID == properties->deviceID &&
+                        memcmp(header.pipelineCacheUUID, properties->pipelineCacheUUID, VK_UUID_SIZE) == 0)
+                        size = payload;
+                }
+            }
+        }
+        fclose(file);
+    }
+    VkPipelineCacheCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .initialDataSize = size,
+        .pInitialData = size ? data : NULL,
+    };
+    VkResult result = vkCreatePipelineCache(platform->device, &info, NULL, &platform->pipeline_cache);
+    platform->pipeline_cache_loaded = size && result == VK_SUCCESS;
+    free(data);
+    if (result != VK_SUCCESS && size) {
+        info.initialDataSize = 0;
+        info.pInitialData = NULL;
+        result = vkCreatePipelineCache(platform->device, &info, NULL, &platform->pipeline_cache);
+    }
+    if (result != VK_SUCCESS) platform->pipeline_cache = VK_NULL_HANDLE;
+}
+
+// Cache access is serialized by the renderer thread. The same-directory
+// process-specific temporary file preserves an existing cache if writing fails.
+static void tt_save_pipeline_cache(TTPlatform *platform) {
+    if (!platform->pipeline_cache || !platform->pipeline_cache_file[0]) return;
+    size_t size = 0;
+    if (vkGetPipelineCacheData(platform->device, platform->pipeline_cache, &size, NULL) != VK_SUCCESS ||
+        !size || size > 16 * 1024 * 1024) return;
+    void *data = malloc(size);
+    if (!data) return;
+    if (vkGetPipelineCacheData(platform->device, platform->pipeline_cache, &size, data) != VK_SUCCESS) {
+        free(data);
+        return;
+    }
+    char temporary[4144];
+#ifdef _WIN32
+    unsigned long pid = (unsigned long)GetCurrentProcessId();
+#else
+    unsigned long pid = (unsigned long)getpid();
+#endif
+    snprintf(temporary, sizeof(temporary), "%s.%lu.tmp", platform->pipeline_cache_file, pid);
+    FILE *file = fopen(temporary, "wb");
+    if (file) {
+        unsigned char envelope[16] = "TTPCACHE";
+        uint64_t checksum = tt_pipeline_cache_checksum(data, size);
+        memcpy(envelope + 8, &checksum, sizeof(checksum));
+        bool complete = fwrite(envelope, 1, sizeof(envelope), file) == sizeof(envelope) &&
+                        fwrite(data, 1, size, file) == size;
+        if (fclose(file) != 0) complete = false;
+#ifdef _WIN32
+        if (complete && MoveFileExA(temporary, platform->pipeline_cache_file,
+                                   MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            temporary[0] = '\0';
+#else
+        if (complete && rename(temporary, platform->pipeline_cache_file) == 0)
+            temporary[0] = '\0';
+#endif
+        if (temporary[0]) remove(temporary);
+    }
+    free(data);
+}
+
 static bool tt_create_device(TTPlatform *platform) {
     TTDeviceInfo *info = &platform->devices[platform->selected_device];
     uint32_t families[2] = {(uint32_t)info->graphics_queue_family,
@@ -1092,6 +1279,7 @@ static bool tt_create_device(TTPlatform *platform) {
         return false;
     }
     volkLoadDevice(platform->device);
+    tt_initialize_pipeline_cache(platform, &device_properties);
     vkGetDeviceQueue(platform->device, families[0], 0, &platform->graphics_queue);
     vkGetDeviceQueue(platform->device, families[1], 0, &platform->present_queue);
     VkCommandPoolCreateInfo pool_info = {
@@ -1104,11 +1292,49 @@ static bool tt_create_device(TTPlatform *platform) {
         tt_set_vk_error("vkCreateCommandPool", result);
         return false;
     }
+    if (platform->profiling) {
+        platform->timestamp_period = device_properties.limits.timestampPeriod;
+        uint32_t family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(
+            platform->physical_devices[platform->selected_device], &family_count, NULL);
+        VkQueueFamilyProperties *properties = calloc(family_count, sizeof(*properties));
+        if (properties) {
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                platform->physical_devices[platform->selected_device], &family_count, properties);
+            if (families[0] < family_count)
+                platform->timestamp_bits = properties[families[0]].timestampValidBits;
+            free(properties);
+        }
+        if (platform->debug_labels_enabled) {
+            platform->begin_label = (PFN_vkCmdBeginDebugUtilsLabelEXT)
+                vkGetDeviceProcAddr(platform->device, "vkCmdBeginDebugUtilsLabelEXT");
+            platform->end_label = (PFN_vkCmdEndDebugUtilsLabelEXT)
+                vkGetDeviceProcAddr(platform->device, "vkCmdEndDebugUtilsLabelEXT");
+            if (!platform->begin_label || !platform->end_label) {
+                platform->begin_label = NULL;
+                platform->end_label = NULL;
+            }
+        }
+    }
     for (int i = 0; i < TT_FRAMES_IN_FLIGHT; ++i) {
         if (!tt_create_frame_resources(platform, &platform->frames[i]))
             return false;
     }
     return true;
+}
+
+static VkResult tt_profile_create_pipelines(TTPlatform *platform, VkPipelineCache cache,
+    uint32_t count, const VkGraphicsPipelineCreateInfo *infos,
+    const VkAllocationCallbacks *allocator, VkPipeline *pipelines) {
+    double started = platform->profiling ? glfwGetTime() : 0;
+    VkResult result = vkCreateGraphicsPipelines(platform->device,
+                                                platform->pipeline_cache ? platform->pipeline_cache : cache, count,
+                                                infos, allocator, pipelines);
+    if (platform->profiling) {
+        platform->pipeline_seconds += glfwGetTime() - started;
+        platform->pipeline_calls += count;
+    }
+    return result;
 }
 
 static bool tt_create_graphics_pipeline(TTPlatform *platform) {
@@ -1323,7 +1549,7 @@ static bool tt_create_graphics_pipeline(TTPlatform *platform) {
         .subpass = 0,
     };
     if (result == VK_SUCCESS)
-        result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+        result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                            &pipeline_info, NULL, &platform->pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
     if (result != VK_SUCCESS) {
@@ -1410,7 +1636,7 @@ static bool tt_create_tunnel_fill_pipeline(TTPlatform *platform) {
         .pColorBlendState = &blend, .pDynamicState = &dynamic,
         .layout = platform->pipeline_layout, .renderPass = platform->render_pass,
     };
-    VkResult result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    VkResult result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                                 &info, NULL,
                                                 &platform->tunnel_fill_pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
@@ -1507,7 +1733,7 @@ static bool tt_create_ship_pipeline(TTPlatform *platform) {
         .pColorBlendState = &blend, .pDynamicState = &dynamic,
         .layout = platform->pipeline_layout, .renderPass = platform->render_pass,
     };
-    VkResult result = vkCreateGraphicsPipelines(platform->device,
+    VkResult result = tt_profile_create_pipelines(platform,
                                                 VK_NULL_HANDLE, 1, &info, NULL,
                                                 &platform->ship_pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
@@ -1599,7 +1825,7 @@ static bool tt_create_bullet_pipeline(TTPlatform *platform) {
         .pColorBlendState = &blend, .pDynamicState = &dynamic,
         .layout = platform->pipeline_layout, .renderPass = platform->render_pass,
     };
-    VkResult result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    VkResult result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                                 &info, NULL, &platform->bullet_pipeline);
     if (result != VK_SUCCESS) {
         tt_destroy_shader_pair(platform->device, &shaders);
@@ -1610,7 +1836,7 @@ static bool tt_create_bullet_pipeline(TTPlatform *platform) {
     // additive pipeline for flames, sparks and fragments.
     attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                        &info, NULL, &platform->bullet_opacity_pipeline);
     if (result != VK_SUCCESS) {
         tt_destroy_shader_pair(platform->device, &shaders);
@@ -1625,7 +1851,7 @@ static bool tt_create_bullet_pipeline(TTPlatform *platform) {
     multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     depth_stencil.depthTestEnable = VK_FALSE;
     info.renderPass = platform->post_render_pass;
-    result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                        &info, NULL,
                                        &platform->bullet_overlay_pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
@@ -1848,7 +2074,7 @@ static bool tt_create_post_pipeline(TTPlatform *platform) {
         .layout = platform->post_pipeline_layout,
         .renderPass = platform->post_render_pass,
     };
-    result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                        &pipeline_info, NULL,
                                        &platform->post_pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
@@ -1924,7 +2150,7 @@ static bool tt_create_hud_pipeline(TTPlatform *platform) {
         .pColorBlendState = &blend, .pDynamicState = &dynamic,
         .layout = platform->pipeline_layout, .renderPass = platform->post_render_pass,
     };
-    VkResult result = vkCreateGraphicsPipelines(platform->device, VK_NULL_HANDLE, 1,
+    VkResult result = tt_profile_create_pipelines(platform, VK_NULL_HANDLE, 1,
                                                 &info, NULL, &platform->hud_pipeline);
     tt_destroy_shader_pair(platform->device, &shaders);
     if (result != VK_SUCCESS) {
@@ -2705,7 +2931,7 @@ static bool tt_platform_toggle_borderless_fullscreen(TTPlatform *platform) {
 
 static TTPlatform *tt_platform_create(int width, int height, const char *title,
                                       int fullscreen, int sample_count,
-                                      int fps_limit) {
+                                      int fps_limit, const char *cache_file) {
     tt_platform_error[0] = '\0';
     glfwSetErrorCallback(tt_glfw_error_callback);
     if (!glfwInit()) {
@@ -2728,6 +2954,10 @@ static TTPlatform *tt_platform_create(int width, int height, const char *title,
         glfwTerminate();
         return NULL;
     }
+    if (cache_file && strlen(cache_file) < sizeof(platform->pipeline_cache_file))
+        memcpy(platform->pipeline_cache_file, cache_file, strlen(cache_file) + 1);
+    platform->profiling = getenv("TT_GPU_PROFILE") && strcmp(getenv("TT_GPU_PROFILE"), "1") == 0;
+    double startup_started = glfwGetTime();
     platform->hud_visible = true;
     platform->replay_view_ratio = 1.0f;
     platform->requested_sample_count = sample_count;
@@ -2756,6 +2986,24 @@ static TTPlatform *tt_platform_create(int width, int height, const char *title,
         tt_set_error("GLFW returned no Vulkan instance extensions");
         tt_platform_destroy(platform);
         return NULL;
+    }
+    const char *profile_extensions[32];
+    if (platform->profiling && extension_count < 32) {
+        uint32_t count = 0;
+        if (vkEnumerateInstanceExtensionProperties(NULL, &count, NULL) == VK_SUCCESS) {
+            VkExtensionProperties *available = calloc(count, sizeof(*available));
+            if (available && vkEnumerateInstanceExtensionProperties(NULL, &count, available) == VK_SUCCESS) {
+                for (uint32_t i = 0; i < count; ++i)
+                    if (strcmp(available[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
+                        platform->debug_labels_enabled = true;
+            }
+            free(available);
+        }
+        if (platform->debug_labels_enabled) {
+            memcpy(profile_extensions, extensions, extension_count * sizeof(*extensions));
+            profile_extensions[extension_count++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+            extensions = profile_extensions;
+        }
     }
     VkApplicationInfo application_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -2792,6 +3040,7 @@ static TTPlatform *tt_platform_create(int width, int height, const char *title,
         tt_platform_destroy(platform);
         return NULL;
     }
+    platform->startup_seconds = glfwGetTime() - startup_started;
     platform->start_time = glfwGetTime();
     return platform;
 }
@@ -2915,6 +3164,11 @@ static bool tt_draw_frame(TTPlatform *platform) {
         tt_set_vk_error("vkBeginCommandBuffer", result);
         return false;
     }
+    if (frame->profile_queries) {
+        vkCmdResetQueryPool(command, frame->profile_queries, 0, 3);
+        vkCmdWriteTimestamp(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, frame->profile_queries, 0);
+    }
+    tt_begin_profile_label(platform, command, "Scene");
     VkClearValue clears[3] = {
         tt_background_navy,
         {.depthStencil = {1.0f, 0}},
@@ -3043,6 +3297,10 @@ static bool tt_draw_frame(TTPlatform *platform) {
         }
     }
     vkCmdEndRenderPass(command);
+    tt_end_profile_label(platform, command);
+    if (frame->profile_queries)
+        vkCmdWriteTimestamp(command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, frame->profile_queries, 1);
+    tt_begin_profile_label(platform, command, "Post-process and HUD");
 
     VkClearValue post_clear = tt_background_navy;
     VkRenderPassBeginInfo post_render_pass_info = {
@@ -3211,6 +3469,9 @@ static bool tt_draw_frame(TTPlatform *platform) {
         tt_draw_replay_library(platform, command, push.aspect);
     }
     vkCmdEndRenderPass(command);
+    tt_end_profile_label(platform, command);
+    if (frame->profile_queries)
+        vkCmdWriteTimestamp(command, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, frame->profile_queries, 2);
     result = vkEndCommandBuffer(command);
     if (result != VK_SUCCESS) {
         tt_set_vk_error("vkEndCommandBuffer", result);
@@ -3237,6 +3498,7 @@ static bool tt_draw_frame(TTPlatform *platform) {
         tt_set_vk_error("vkQueueSubmit", result);
         return false;
     }
+    frame->profile_pending = frame->profile_queries != VK_NULL_HANDLE;
     platform->upload_frame_ready = false;
     VkPresentInfoKHR present_info = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -3262,8 +3524,21 @@ static bool tt_draw_frame(TTPlatform *platform) {
 static void tt_platform_destroy(TTPlatform *platform) {
     if (!platform) return;
     if (platform->device) vkDeviceWaitIdle(platform->device);
+    if (platform->profiling && platform->device) {
+        for (int i = 0; i < TT_FRAMES_IN_FLIGHT; ++i)
+            tt_collect_profile(platform, &platform->frames[i]);
+        fprintf(stderr, "GPU_PROFILE startup_ms=%.3f pipeline_ms=%.3f pipelines=%u cache_loaded=%d samples=%llu timestamp_bits=%u labels=%d scene_ms=%.6f post_ms=%.6f\n",
+            platform->startup_seconds * 1000, platform->pipeline_seconds * 1000,
+            platform->pipeline_calls, platform->pipeline_cache_loaded, (unsigned long long)platform->profile_samples,
+            platform->timestamp_bits, platform->begin_label != NULL,
+            platform->profile_samples ? platform->scene_ns / platform->profile_samples / 1e6 : 0,
+            platform->profile_samples ? platform->post_ns / platform->profile_samples / 1e6 : 0);
+    }
+    tt_save_pipeline_cache(platform);
     tt_destroy_swapchain(platform);
     if (platform->device) {
+        if (platform->pipeline_cache)
+            vkDestroyPipelineCache(platform->device, platform->pipeline_cache, NULL);
         for (int i = 0; i < TT_FRAMES_IN_FLIGHT; ++i)
             tt_destroy_frame_resources(platform->device, &platform->frames[i]);
         if (platform->command_pool)

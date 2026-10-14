@@ -67,7 +67,8 @@ Other drivers or more complex programs may justify revisiting that decision.
 ## Observed renderer costs
 
 The renderer benchmark uses isolated player data and 800×600 output. It starts
-Normal gameplay through the ordinary menu and exits cleanly. Vulkan validation
+Normal gameplay through the ordinary menu, waits for its start acknowledgment,
+and exits with the normal X11 window-manager close request. Vulkan validation
 was enabled. Timestamp and label support were available on the same NVIDIA GPU.
 
 Five warmed process starts had median platform initialization of **157.106 ms**,
@@ -138,6 +139,9 @@ Each frame slot owns its query pool. Results are read after its existing fence;
 only available samples are consumed. Queries are reset before recording the
 next use of that slot, and elapsed ticks respect the queue family's counter
 width. Query pools are destroyed before the device. Profiling is off by default.
+The harness and cache fallback tests also passed on Mesa llvmpipe with Vulkan
+validation enabled. These software-driver checks establish behavior, not hardware
+performance.
 
 The renderer already owns its devices and presentation resources in C. The
 new Vulkan ergonomic helpers require an `OwnedDevice`; constructing an owner

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Measure renderer startup and opt-in GPU intervals on an isolated X11 display."""
 import argparse
+import ctypes
+import ctypes.util
 import hashlib
 import json
 import os
@@ -22,6 +24,49 @@ def read_profile(log):
         raise RuntimeError('Renderer did not report profiling results.\n' + log)
     fields = dict(item.split('=', 1) for item in match[1].split())
     return {key: float(value) for key, value in fields.items()}
+
+
+def close_window(window):
+    """Send the same WM_DELETE_WINDOW request as the window manager's close button."""
+    class MessageData(ctypes.Union):
+        _fields_ = [('longs', ctypes.c_long * 5), ('bytes', ctypes.c_char * 20)]
+    class ClientMessage(ctypes.Structure):
+        _fields_ = [('type', ctypes.c_int), ('serial', ctypes.c_ulong),
+                    ('send_event', ctypes.c_int), ('display', ctypes.c_void_p),
+                    ('window', ctypes.c_ulong), ('message_type', ctypes.c_ulong),
+                    ('format', ctypes.c_int), ('data', MessageData)]
+    class Event(ctypes.Union):
+        _fields_ = [('client', ClientMessage), ('padding', ctypes.c_long * 24)]
+    library = ctypes.util.find_library('X11')
+    if not library:
+        raise RuntimeError('Renderer benchmark requires X11')
+    x11 = ctypes.CDLL(library)
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+    x11.XInternAtom.restype = ctypes.c_ulong
+    x11.XSendEvent.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int,
+                              ctypes.c_long, ctypes.POINTER(Event)]
+    x11.XSendEvent.restype = ctypes.c_int
+    x11.XFlush.argtypes = [ctypes.c_void_p]
+    x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = x11.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('Cannot open benchmark display')
+    try:
+        event = Event()
+        event.client.type = 33  # ClientMessage
+        event.client.send_event = 1
+        event.client.display = display
+        event.client.window = int(window)
+        event.client.message_type = x11.XInternAtom(display, b'WM_PROTOCOLS', 0)
+        event.client.format = 32
+        event.client.data.longs[0] = x11.XInternAtom(display, b'WM_DELETE_WINDOW', 0)
+        if not x11.XSendEvent(display, int(window), 0, 0, ctypes.byref(event)):
+            raise RuntimeError('Window close request failed')
+        x11.XFlush(display)
+    finally:
+        x11.XCloseDisplay(display)
 
 
 def main():
@@ -60,18 +105,19 @@ def main():
                     ['xdotool', 'search', '--onlyvisible', '--pid', str(process.pid),
                      '--name', '^Torus Trooper'], env=environment, text=True).split()[0]
                 subprocess.run(['xdotool', 'windowfocus', '--sync', window], env=environment, check=True)
-                def press(key):
-                    if process.poll() is not None:
-                        return
-                    subprocess.run(['xdotool', 'keydown', key], env=environment, check=True)
-                    time.sleep(.3)
-                    subprocess.run(['xdotool', 'keyup', key], env=environment, check=True)
-                    time.sleep(.3)
-                press('Return')  # Start Normal gameplay using its ordinary menu action.
+                # Hold the ordinary start action until the game acknowledges it.
+                # A timed press can be missed between slow software-rendered frames.
+                subprocess.run(['xdotool', 'keydown', 'Return'], env=environment, check=True)
+                try:
+                    deadline = time.monotonic() + 30
+                    while 'Run started: NORMAL' not in log_path.read_text():
+                        if process.poll() is not None or time.monotonic() > deadline:
+                            raise RuntimeError('Gameplay did not acknowledge start.\n' + log_path.read_text())
+                        time.sleep(.1)
+                finally:
+                    subprocess.run(['xdotool', 'keyup', 'Return'], env=environment, check=True)
                 time.sleep(args.seconds)
-                press('Escape')
-                press('Up')  # Wrap the Normal selection to Exit.
-                press('Return')
+                close_window(window)
                 if process.wait(timeout=20):
                     raise RuntimeError(log_path.read_text())
             finally:

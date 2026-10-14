@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import uuid
 
 from benchmark_renderer import read_profile, ROOT
 
@@ -25,8 +26,9 @@ def main():
     with tempfile.TemporaryDirectory() as temporary:
         temporary = Path(temporary)
         cache = temporary / 'application.cache'
+        nonce = uuid.uuid4().hex[:12]
         def probe(name, use_cache):
-            executable = temporary / (name + ('.exe' if os.name == 'nt' else ''))
+            executable = temporary / (name + '-' + nonce + ('.exe' if os.name == 'nt' else ''))
             shutil.copy2(binary, executable)
             environment = dict(os.environ, TT_GPU_PROFILE='1')
             environment['TT_PIPELINE_CACHE_FILE'] = ''
@@ -52,7 +54,8 @@ def main():
     report = {'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
               'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
               'bridge_sha256': hashlib.sha256((ROOT / 'runtime/vulkan_bridge.h').read_bytes()).hexdigest(),
-              'cache_bytes': cache_bytes, 'records': records}
+              'benchmark_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              'cache_bytes': cache_bytes, 'executable_nonce': nonce, 'records': records}
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(f'Saved pipeline cache comparison to {args.output}')
 

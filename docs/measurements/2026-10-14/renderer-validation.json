@@ -1,13 +1,14 @@
 {
-  "source_commit": "de46132bcde52f85c9055b9de6b4aead3774ae79",
-  "binary_sha256": "69bf4549520d9f0a59c0d2dfa0104b85bf2b18207bbc7bd12b000cb94c6e1c4c",
-  "bridge_sha256": "e858218deeac45d60d302ec2fe39260cdabefd3be576a4941be0f67af775e85d",
+  "source_commit": "012b52a86d2a0539158dfecc97981e02f0b017cc",
+  "binary_sha256": "a9496638c3c9b255ee0490c97222ce066f1d279f16a2e777419300185bcab613",
+  "bridge_sha256": "9250ea073eeb2ab2411f7c1db980e73dd6733293fc54825250b454a00922a29b",
   "validation_layers": "VK_LAYER_KHRONOS_validation",
   "records": [
     {
-      "startup_ms": 807.641,
-      "pipeline_ms": 654.551,
+      "startup_ms": 198.827,
+      "pipeline_ms": 2.56,
       "pipelines": 8.0,
+      "cache_loaded": 0.0,
       "samples": 0.0,
       "timestamp_bits": 64.0,
       "labels": 1.0,
@@ -17,14 +18,15 @@
       "run": 1
     },
     {
-      "startup_ms": 159.381,
-      "pipeline_ms": 2.4,
+      "startup_ms": 169.008,
+      "pipeline_ms": 2.718,
       "pipelines": 8.0,
-      "samples": 210.0,
+      "cache_loaded": 0.0,
+      "samples": 196.0,
       "timestamp_bits": 64.0,
       "labels": 1.0,
-      "scene_ms": 0.760495,
-      "post_ms": 0.375203,
+      "scene_ms": 0.80768,
+      "post_ms": 0.419114,
       "kind": "gameplay"
     }
   ]

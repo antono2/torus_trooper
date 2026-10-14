@@ -81,15 +81,16 @@ No driver cache was deleted or disabled.
 
 The application-cache comparison seeds a cache, then alternates five uncached
 and five cached copies of the identical executable with separate, previously
-unused names. It preserves ordinary driver settings and includes cache-file
+unused names. Each invocation adds a fresh random suffix to avoid accidentally
+reusing a driver cache associated with an earlier executable name. It preserves ordinary driver settings and includes cache-file
 loading in platform initialization. In that experiment:
 
 | First-use executable copies | Median platform startup (ms) | Median pipeline creation (ms) |
 | --- | ---: | ---: |
-| No application cache | 877.786 | 722.282 |
-| Valid application cache | 197.032 | 26.423 |
+| No application cache | 980.819 | 816.374 |
+| Valid application cache | 194.553 | 27.639 |
 
-The cache file was 243,594 bytes. This roughly 681 ms local startup saving
+The cache file was 243,594 bytes. This roughly 786 ms local startup saving
 justifies an application pipeline cache. It is an observation for these
 first-use executable copies on this driver, not a general cold-system benchmark.
 The program creates every requested pipeline normally; accepting a cache blob

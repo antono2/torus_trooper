@@ -180,6 +180,10 @@ jobs:
           cat validation.log
           if [[ $status -ne 0 && $status -ne 124 ]]; then exit $status; fi
           if grep -Eiq 'validation error|vuid-|segmentation|assert|fatal' validation.log; then exit 1; fi
+      - name: Verify opt-in GPU profiling and capture labels
+        run: |
+          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/benchmark_renderer.py ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
+          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/test_pipeline_cache.py ./torus_trooper
       - name: Compile and smoke test with TinyCC
         run: python3 scripts/check_compiler_diagnostics.py -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
       - name: Test OpenCL motion backend
@@ -373,6 +377,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL compilation failed' }
           python scripts/test_opencl_runtime.py $DynamicExecutable
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL fallback verification failed' }
+      - name: Verify pipeline cache persistence and fallback on Windows
+        shell: pwsh
+        run: |
+          $GlfwRoot = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-mingw-static'
+          $env:GLFW_INCLUDE = Join-Path $GlfwRoot 'include'
+          $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
+          $CacheExecutable = Join-Path $env:RUNNER_TEMP 'torus-cache-probe.exe'
+          python scripts/check_compiler_diagnostics.py -- v -subsystem console -cc clang -cflags -Wno-incompatible-pointer-types -o $CacheExecutable .
+          if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache probe compilation failed' }
+          python scripts/test_pipeline_cache.py $CacheExecutable
+          if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache fallback verification failed' }
       - name: Package and probe Windows candidate
         shell: pwsh
         run: |

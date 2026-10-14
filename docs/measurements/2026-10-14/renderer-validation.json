@@ -1,0 +1,31 @@
+{
+  "source_commit": "de46132bcde52f85c9055b9de6b4aead3774ae79",
+  "binary_sha256": "69bf4549520d9f0a59c0d2dfa0104b85bf2b18207bbc7bd12b000cb94c6e1c4c",
+  "bridge_sha256": "e858218deeac45d60d302ec2fe39260cdabefd3be576a4941be0f67af775e85d",
+  "validation_layers": "VK_LAYER_KHRONOS_validation",
+  "records": [
+    {
+      "startup_ms": 807.641,
+      "pipeline_ms": 654.551,
+      "pipelines": 8.0,
+      "samples": 0.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.0,
+      "post_ms": 0.0,
+      "kind": "startup",
+      "run": 1
+    },
+    {
+      "startup_ms": 159.381,
+      "pipeline_ms": 2.4,
+      "pipelines": 8.0,
+      "samples": 210.0,
+      "timestamp_bits": 64.0,
+      "labels": 1.0,
+      "scene_ms": 0.760495,
+      "post_ms": 0.375203,
+      "kind": "gameplay"
+    }
+  ]
+}

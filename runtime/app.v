@@ -38,7 +38,7 @@ fn C.tt_platform_clipboard(platform &C.TTPlatform) &char
 fn C.tt_platform_replay_overlay(platform &C.TTPlatform, open bool, editing bool, selected int)
 fn C.tt_platform_replay_line(platform &C.TTPlatform, codes &u8, length int)
 
-fn C.tt_platform_create(width int, height int, title &char, fullscreen int, sample_count int, fps_limit int) &C.TTPlatform
+fn C.tt_platform_create(width int, height int, title &char, fullscreen int, sample_count int, fps_limit int, cache_file &char) &C.TTPlatform
 
 fn C.tt_platform_antialiasing_samples(platform &C.TTPlatform) int
 
@@ -328,7 +328,8 @@ pub fn new_app(config AppConfig) !&App {
 	} else {
 		config.fps_limit
 	}
-	platform := C.tt_platform_create(config.width, config.height, config.title.str, int(config.fullscreen), requested_samples, normalized_fps_limit(requested_fps_limit))
+	cache_file := renderer_pipeline_cache_path()
+	platform := C.tt_platform_create(config.width, config.height, config.title.str, int(config.fullscreen), requested_samples, normalized_fps_limit(requested_fps_limit), cache_file.str)
 	if isnil(platform) {
 		message := unsafe { C.tt_platform_last_error().vstring() }
 		return error(message)

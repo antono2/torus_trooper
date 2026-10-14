@@ -169,6 +169,19 @@ to an absolute library path to select a specific runtime; a failed override is
 reported and falls back to CPU without trying another loader. Device selection
 prefers an available GPU with a source compiler, then another capable device.
 
+## Developer performance measurements
+
+See [binding update measurements](binding-update-measurements.md) for reproducible
+compute benchmarks and the cache decisions. Set `TT_GPU_PROFILE=1` for optional
+renderer startup timing, GPU timestamps and capture labels. Profiling reports
+completed samples on clean exit and is disabled by default.
+
+Graphical startup stores an optional Vulkan pipeline cache in the user's cache
+folder. Missing, corrupt or stale data and cache I/O failures preserve normal
+startup. Set `TT_PIPELINE_CACHE_FILE` to an absolute filename to override its
+location, or to an empty value to disable caching. See the measurements for the
+file contract and platform locations.
+
 ## Advanced settings and controls
 
 ### Option files and saved preferences

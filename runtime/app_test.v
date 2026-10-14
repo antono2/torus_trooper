@@ -649,3 +649,12 @@ fn test_presentation_timers_clamp_stalls_and_preserve_replay_direction() {
 	assert timers.game_over_elapsed_ms == 0
 	assert timers.replay_change_ms == 484
 }
+
+fn C.tt_profile_delta_ticks(start u64, end u64, valid_bits u32) u64
+
+fn test_gpu_profile_counter_width_and_wrap() {
+	assert C.tt_profile_delta_ticks(10, 25, 64) == 15
+	assert C.tt_profile_delta_ticks(250, 3, 8) == 9
+	assert C.tt_profile_delta_ticks(~u64(0) - 2, 2, 64) == 5
+	assert C.tt_profile_delta_ticks(10, 25, 0) == 0
+}

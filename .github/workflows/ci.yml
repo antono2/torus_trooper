@@ -187,7 +187,11 @@ jobs:
         # call the optional OpenCL path. Keep those declarations for this suite.
         run: python3 scripts/check_compiler_diagnostics.py -- v -no-skip-unused -d opencl_compute -cc gcc test sim
       - name: Compile OpenCL backend with TinyCC
-        run: python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc . && ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
+        run: |
+          python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc .
+          ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
+          python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
+          python3 scripts/test_opencl_runtime.py ./torus_trooper_opencl_dynamic_tcc --require-opencl
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate
@@ -349,6 +353,26 @@ jobs:
           $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
           $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
           .\scripts\build_windows.ps1 -OutputPath $Executable -Verify
+      - name: Verify optional OpenCL startup on Windows
+        shell: pwsh
+        run: |
+          $HeadersRef = (Get-Content modules/antono2/opencl/HEADERS_COMMIT -Raw).Trim()
+          if ($HeadersRef -notmatch '^[0-9a-f]{40}$') { throw 'Invalid OpenCL header revision' }
+          $HeadersRoot = Join-Path $env:RUNNER_TEMP 'opencl-headers'
+          git init $HeadersRoot
+          git -C $HeadersRoot fetch --depth 1 https://github.com/KhronosGroup/OpenCL-Headers.git $HeadersRef
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch pinned OpenCL headers' }
+          git -C $HeadersRoot checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot check out pinned OpenCL headers' }
+          Copy-Item (Join-Path $HeadersRoot 'CL/*') modules/antono2/opencl/include/CL -Force
+          $GlfwRoot = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-mingw-static'
+          $env:GLFW_INCLUDE = Join-Path $GlfwRoot 'include'
+          $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
+          $DynamicExecutable = Join-Path $env:RUNNER_TEMP 'torus-opencl-dynamic.exe'
+          python scripts/check_compiler_diagnostics.py -- v -subsystem console -d opencl_compute -d opencl_dynamic -cc clang -cflags -Wno-incompatible-pointer-types -o $DynamicExecutable .
+          if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL compilation failed' }
+          python scripts/test_opencl_runtime.py $DynamicExecutable
+          if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL fallback verification failed' }
       - name: Package and probe Windows candidate
         shell: pwsh
         run: |

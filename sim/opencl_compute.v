@@ -439,40 +439,34 @@ kernel void step_enemies(global EnemyMotion *items) {
 		bullet_kernel                  cl.OwnedKernel
 		shot_kernel                    cl.OwnedKernel
 		enemy_kernel                   cl.OwnedKernel
-		particle_slots                 &cl.Buffer[OpenCLParticleSlot]
-		active_flags_a                 &cl.Buffer[i32]
-		active_flags_b                 &cl.Buffer[i32]
-		particle_buffer                &cl.Buffer[OpenCLParticleMotion]
-		particle_indices               &cl.Buffer[i32]
-		bullet_slots                   &cl.Buffer[OpenCLBulletSlot]
-		bullet_buffer                  &cl.Buffer[OpenCLBulletMotion]
-		bullet_indices                 &cl.Buffer[i32]
-		shot_slots                     &cl.Buffer[OpenCLShotSlot]
-		shot_buffer                    &cl.Buffer[OpenCLShotMotion]
-		shot_indices                   &cl.Buffer[i32]
-		enemy_slots                    &cl.Buffer[OpenCLEnemySlot]
-		enemy_buffer                   &cl.Buffer[OpenCLEnemyMotion]
-		enemy_indices                  &cl.Buffer[i32]
-		collision_shot_slots           &cl.Buffer[OpenCLCollisionPoint]
-		collision_shots                &cl.Buffer[OpenCLCollisionPoint]
-		collision_target_slots         &cl.Buffer[OpenCLCollisionPoint]
-		collision_targets              &cl.Buffer[OpenCLCollisionPoint]
-		collision_candidate_buffer     &cl.Buffer[OpenCLShotCollisionCandidate]
+		particle_slots                 &cl.ScratchBuffer[OpenCLParticleSlot]
+		active_flags_a                 &cl.ScratchBuffer[i32]
+		active_flags_b                 &cl.ScratchBuffer[i32]
+		particle_buffer                &cl.ScratchBuffer[OpenCLParticleMotion]
+		particle_indices               &cl.ScratchBuffer[i32]
+		bullet_slots                   &cl.ScratchBuffer[OpenCLBulletSlot]
+		bullet_buffer                  &cl.ScratchBuffer[OpenCLBulletMotion]
+		bullet_indices                 &cl.ScratchBuffer[i32]
+		shot_slots                     &cl.ScratchBuffer[OpenCLShotSlot]
+		shot_buffer                    &cl.ScratchBuffer[OpenCLShotMotion]
+		shot_indices                   &cl.ScratchBuffer[i32]
+		enemy_slots                    &cl.ScratchBuffer[OpenCLEnemySlot]
+		enemy_buffer                   &cl.ScratchBuffer[OpenCLEnemyMotion]
+		enemy_indices                  &cl.ScratchBuffer[i32]
+		collision_shot_slots           &cl.ScratchBuffer[OpenCLCollisionPoint]
+		collision_shots                &cl.ScratchBuffer[OpenCLCollisionPoint]
+		collision_target_slots         &cl.ScratchBuffer[OpenCLCollisionPoint]
+		collision_targets              &cl.ScratchBuffer[OpenCLCollisionPoint]
+		collision_candidate_buffer     &cl.ScratchBuffer[OpenCLShotCollisionCandidate]
 		device_name                    string
 	}
 
 	fn select_opencl_device() !(cl.DeviceId, string) {
-		platforms := cl.platforms()!
-		for device_kind in [cl.device_type_gpu, cl.device_type_all] {
-			for platform in platforms {
-				devices := cl.devices(platform, device_kind)!
-				if devices.len > 0 {
-					name := cl.device_info_string(devices[0], cl.device_name)!
-					return devices[0], name
-				}
-			}
-		}
-		return error('no OpenCL devices are available')
+		device := cl.select_device(cl.DeviceRequirements{
+			// Preserve GPU preference and allow other capable device types.
+			preferred_types: [cl.device_type_gpu, cl.device_type_all]
+		})!
+		return device.device, device.name
 	}
 
 	fn new_opencl_compute() !&OpenCLCompute {
@@ -582,41 +576,53 @@ kernel void step_enemies(global EnemyMotion *items) {
 		return compute
 	}
 
-	fn ensure_buffer_capacity[T](context &cl.OwnedContext, buffer &cl.Buffer[T], count int) !&cl.Buffer[T] {
-		if !isnil(buffer) && buffer.count >= count {
-			return unsafe { buffer }
-		}
+	fn ensure_buffer_capacity[T](context &cl.OwnedContext, buffer &cl.ScratchBuffer[T], count int) !&cl.ScratchBuffer[T] {
 		if !isnil(buffer) {
-			mut previous := unsafe { buffer }
-			previous.close()!
+			mut scratch := unsafe { buffer }
+			scratch.reserve(count)!
+			return scratch
 		}
-		return cl.new_buffer[T](context, cl.mem_read_write, count)!
+		mut scratch := cl.new_scratch_buffer[T](context, cl.mem_read_write)!
+		scratch.reserve(count) or {
+			scratch.close() or {}
+			return err
+		}
+		return scratch
 	}
 
-	fn close_buffer_if_allocated[T](mut buffer &cl.Buffer[T]) {
+	fn close_buffer_if_allocated[T](mut buffer &cl.ScratchBuffer[T]) {
 		if !isnil(buffer) {
 			buffer.close() or {}
 		}
 	}
 
 	fn run_motion_kernel[T](context &cl.OwnedContext, queue &cl.OwnedCommandQueue,
-		kernel &cl.OwnedKernel, buffer &cl.Buffer[T], mut items []T) !&cl.Buffer[T] {
+		kernel &cl.OwnedKernel, buffer &cl.ScratchBuffer[T], mut items []T) !&cl.ScratchBuffer[T] {
 		if items.len == 0 {
 			return unsafe { buffer }
 		}
 		active_buffer := ensure_buffer_capacity(context, buffer, items.len)!
-		active_buffer.write(queue, 0, items)!
-		kernel.set_buffer_arg(0, active_buffer.handle)!
+		mut keep := false
+		defer {
+			// The caller cannot adopt a newly created owner after a dispatch error.
+			if isnil(buffer) && !keep {
+				mut pending := unsafe { active_buffer }
+				pending.close() or {}
+			}
+		}
+		active_buffer.buffer()!.write(queue, 0, items)!
+		kernel.set_buffer_arg(0, active_buffer.buffer()!.handle)!
 		kernel.enqueue_1d(queue, usize(items.len), 0)!
-		active_buffer.read(queue, 0, mut items)!
+		active_buffer.buffer()!.read(queue, 0, mut items)!
+		keep = true
 		return active_buffer
 	}
 
 	fn (mut compute OpenCLCompute) scan_flags(count int) !(cl.Mem, int) {
 		compute.active_flags_a = ensure_buffer_capacity(&compute.context, compute.active_flags_a, count)!
 		compute.active_flags_b = ensure_buffer_capacity(&compute.context, compute.active_flags_b, count)!
-		mut scan_input := compute.active_flags_a.handle
-		mut scan_output := compute.active_flags_b.handle
+		mut scan_input := compute.active_flags_a.buffer()!.handle
+		mut scan_output := compute.active_flags_b.buffer()!.handle
 		mut offset := 1
 		for offset < count {
 			scan_offset := i32(offset)
@@ -628,10 +634,10 @@ kernel void step_enemies(global EnemyMotion *items) {
 			offset *= 2
 		}
 		mut active_count_value := [i32(0)]
-		if scan_input == compute.active_flags_a.handle {
-			compute.active_flags_a.read(&compute.queue, count - 1, mut active_count_value)!
+		if scan_input == compute.active_flags_a.buffer()!.handle {
+			compute.active_flags_a.buffer()!.read(&compute.queue, count - 1, mut active_count_value)!
 		} else {
-			compute.active_flags_b.read(&compute.queue, count - 1, mut active_count_value)!
+			compute.active_flags_b.buffer()!.read(&compute.queue, count - 1, mut active_count_value)!
 		}
 		active_count := int(active_count_value[0])
 		if active_count < 0 || active_count > count {
@@ -644,7 +650,7 @@ kernel void step_enemies(global EnemyMotion *items) {
 		slots cl.Mem, count int) !(cl.Mem, int) {
 		compute.active_flags_a = ensure_buffer_capacity(&compute.context, compute.active_flags_a, count)!
 		mark_kernel.set_buffer_arg(0, slots)!
-		mark_kernel.set_buffer_arg(1, compute.active_flags_a.handle)!
+		mark_kernel.set_buffer_arg(1, compute.active_flags_a.buffer()!.handle)!
 		mark_kernel.enqueue_1d(&compute.queue, usize(count), 0)!
 		return compute.scan_flags(count)
 	}
@@ -667,22 +673,22 @@ kernel void step_enemies(global EnemyMotion *items) {
 		compute.particle_slots = ensure_buffer_capacity(&compute.context, compute.particle_slots, slots.len)!
 		compute.particle_buffer = ensure_buffer_capacity(&compute.context, compute.particle_buffer, slots.len)!
 		compute.particle_indices = ensure_buffer_capacity(&compute.context, compute.particle_indices, slots.len)!
-		compute.particle_slots.write(&compute.queue, 0, slots)!
-		scan, active_count := compute.scan_active_slots(&compute.particle_mark_kernel, compute.particle_slots.handle, slots.len)!
+		compute.particle_slots.buffer()!.write(&compute.queue, 0, slots)!
+		scan, active_count := compute.scan_active_slots(&compute.particle_mark_kernel, compute.particle_slots.buffer()!.handle, slots.len)!
 		if active_count == 0 {
 			return ParticleMotionSoa{}
 		}
-		compute.particle_scatter_kernel.set_buffer_arg(0, compute.particle_slots.handle)!
+		compute.particle_scatter_kernel.set_buffer_arg(0, compute.particle_slots.buffer()!.handle)!
 		compute.particle_scatter_kernel.set_buffer_arg(1, scan)!
-		compute.particle_scatter_kernel.set_buffer_arg(2, compute.particle_buffer.handle)!
-		compute.particle_scatter_kernel.set_buffer_arg(3, compute.particle_indices.handle)!
+		compute.particle_scatter_kernel.set_buffer_arg(2, compute.particle_buffer.buffer()!.handle)!
+		compute.particle_scatter_kernel.set_buffer_arg(3, compute.particle_indices.buffer()!.handle)!
 		compute.particle_scatter_kernel.enqueue_1d(&compute.queue, usize(slots.len), 0)!
-		compute.particle_kernel.set_buffer_arg(0, compute.particle_buffer.handle)!
+		compute.particle_kernel.set_buffer_arg(0, compute.particle_buffer.buffer()!.handle)!
 		compute.particle_kernel.enqueue_1d(&compute.queue, usize(active_count), 0)!
 		mut packed := []OpenCLParticleMotion{len: active_count}
 		mut source_indices := []i32{len: active_count}
-		compute.particle_buffer.read(&compute.queue, 0, mut packed)!
-		compute.particle_indices.read(&compute.queue, 0, mut source_indices)!
+		compute.particle_buffer.buffer()!.read(&compute.queue, 0, mut packed)!
+		compute.particle_indices.buffer()!.read(&compute.queue, 0, mut source_indices)!
 		mut result := ParticleMotionSoa{
 			source_indices: []int{cap: active_count}
 			angles:         []f32{cap: active_count}
@@ -747,22 +753,22 @@ kernel void step_enemies(global EnemyMotion *items) {
 		compute.bullet_slots = ensure_buffer_capacity(&compute.context, compute.bullet_slots, slots.len)!
 		compute.bullet_buffer = ensure_buffer_capacity(&compute.context, compute.bullet_buffer, slots.len)!
 		compute.bullet_indices = ensure_buffer_capacity(&compute.context, compute.bullet_indices, slots.len)!
-		compute.bullet_slots.write(&compute.queue, 0, slots)!
-		scan, active_count := compute.scan_active_slots(&compute.bullet_mark_kernel, compute.bullet_slots.handle, slots.len)!
+		compute.bullet_slots.buffer()!.write(&compute.queue, 0, slots)!
+		scan, active_count := compute.scan_active_slots(&compute.bullet_mark_kernel, compute.bullet_slots.buffer()!.handle, slots.len)!
 		if active_count == 0 {
 			return BulletMotionSoa{}
 		}
-		compute.bullet_scatter_kernel.set_buffer_arg(0, compute.bullet_slots.handle)!
+		compute.bullet_scatter_kernel.set_buffer_arg(0, compute.bullet_slots.buffer()!.handle)!
 		compute.bullet_scatter_kernel.set_buffer_arg(1, scan)!
-		compute.bullet_scatter_kernel.set_buffer_arg(2, compute.bullet_buffer.handle)!
-		compute.bullet_scatter_kernel.set_buffer_arg(3, compute.bullet_indices.handle)!
+		compute.bullet_scatter_kernel.set_buffer_arg(2, compute.bullet_buffer.buffer()!.handle)!
+		compute.bullet_scatter_kernel.set_buffer_arg(3, compute.bullet_indices.buffer()!.handle)!
 		compute.bullet_scatter_kernel.enqueue_1d(&compute.queue, usize(slots.len), 0)!
-		compute.bullet_kernel.set_buffer_arg(0, compute.bullet_buffer.handle)!
+		compute.bullet_kernel.set_buffer_arg(0, compute.bullet_buffer.buffer()!.handle)!
 		compute.bullet_kernel.enqueue_1d(&compute.queue, usize(active_count), 0)!
 		mut packed := []OpenCLBulletMotion{len: active_count}
 		mut source_indices := []i32{len: active_count}
-		compute.bullet_buffer.read(&compute.queue, 0, mut packed)!
-		compute.bullet_indices.read(&compute.queue, 0, mut source_indices)!
+		compute.bullet_buffer.buffer()!.read(&compute.queue, 0, mut packed)!
+		compute.bullet_indices.buffer()!.read(&compute.queue, 0, mut source_indices)!
 		mut result := BulletMotionSoa{
 			source_indices:  []int{cap: active_count}
 			angles:          []f32{cap: active_count}
@@ -831,22 +837,22 @@ kernel void step_enemies(global EnemyMotion *items) {
 		compute.shot_slots = ensure_buffer_capacity(&compute.context, compute.shot_slots, slots.len)!
 		compute.shot_buffer = ensure_buffer_capacity(&compute.context, compute.shot_buffer, slots.len)!
 		compute.shot_indices = ensure_buffer_capacity(&compute.context, compute.shot_indices, slots.len)!
-		compute.shot_slots.write(&compute.queue, 0, slots)!
-		scan, active_count := compute.scan_active_slots(&compute.shot_mark_kernel, compute.shot_slots.handle, slots.len)!
+		compute.shot_slots.buffer()!.write(&compute.queue, 0, slots)!
+		scan, active_count := compute.scan_active_slots(&compute.shot_mark_kernel, compute.shot_slots.buffer()!.handle, slots.len)!
 		if active_count == 0 {
 			return ShotMotionSoa{}
 		}
-		compute.shot_scatter_kernel.set_buffer_arg(0, compute.shot_slots.handle)!
+		compute.shot_scatter_kernel.set_buffer_arg(0, compute.shot_slots.buffer()!.handle)!
 		compute.shot_scatter_kernel.set_buffer_arg(1, scan)!
-		compute.shot_scatter_kernel.set_buffer_arg(2, compute.shot_buffer.handle)!
-		compute.shot_scatter_kernel.set_buffer_arg(3, compute.shot_indices.handle)!
+		compute.shot_scatter_kernel.set_buffer_arg(2, compute.shot_buffer.buffer()!.handle)!
+		compute.shot_scatter_kernel.set_buffer_arg(3, compute.shot_indices.buffer()!.handle)!
 		compute.shot_scatter_kernel.enqueue_1d(&compute.queue, usize(slots.len), 0)!
-		compute.shot_kernel.set_buffer_arg(0, compute.shot_buffer.handle)!
+		compute.shot_kernel.set_buffer_arg(0, compute.shot_buffer.buffer()!.handle)!
 		compute.shot_kernel.enqueue_1d(&compute.queue, usize(active_count), 0)!
 		mut packed := []OpenCLShotMotion{len: active_count}
 		mut source_indices := []i32{len: active_count}
-		compute.shot_buffer.read(&compute.queue, 0, mut packed)!
-		compute.shot_indices.read(&compute.queue, 0, mut source_indices)!
+		compute.shot_buffer.buffer()!.read(&compute.queue, 0, mut packed)!
+		compute.shot_indices.buffer()!.read(&compute.queue, 0, mut source_indices)!
 		mut result := ShotMotionSoa{
 			source_indices: []int{cap: active_count}
 			angles:         []f32{cap: active_count}
@@ -907,22 +913,22 @@ kernel void step_enemies(global EnemyMotion *items) {
 		compute.enemy_slots = ensure_buffer_capacity(&compute.context, compute.enemy_slots, slots.len)!
 		compute.enemy_buffer = ensure_buffer_capacity(&compute.context, compute.enemy_buffer, slots.len)!
 		compute.enemy_indices = ensure_buffer_capacity(&compute.context, compute.enemy_indices, slots.len)!
-		compute.enemy_slots.write(&compute.queue, 0, slots)!
-		scan, active_count := compute.scan_active_slots(&compute.enemy_mark_kernel, compute.enemy_slots.handle, slots.len)!
+		compute.enemy_slots.buffer()!.write(&compute.queue, 0, slots)!
+		scan, active_count := compute.scan_active_slots(&compute.enemy_mark_kernel, compute.enemy_slots.buffer()!.handle, slots.len)!
 		if active_count == 0 {
 			return EnemyMotionSoa{}
 		}
-		compute.enemy_scatter_kernel.set_buffer_arg(0, compute.enemy_slots.handle)!
+		compute.enemy_scatter_kernel.set_buffer_arg(0, compute.enemy_slots.buffer()!.handle)!
 		compute.enemy_scatter_kernel.set_buffer_arg(1, scan)!
-		compute.enemy_scatter_kernel.set_buffer_arg(2, compute.enemy_buffer.handle)!
-		compute.enemy_scatter_kernel.set_buffer_arg(3, compute.enemy_indices.handle)!
+		compute.enemy_scatter_kernel.set_buffer_arg(2, compute.enemy_buffer.buffer()!.handle)!
+		compute.enemy_scatter_kernel.set_buffer_arg(3, compute.enemy_indices.buffer()!.handle)!
 		compute.enemy_scatter_kernel.enqueue_1d(&compute.queue, usize(slots.len), 0)!
-		compute.enemy_kernel.set_buffer_arg(0, compute.enemy_buffer.handle)!
+		compute.enemy_kernel.set_buffer_arg(0, compute.enemy_buffer.buffer()!.handle)!
 		compute.enemy_kernel.enqueue_1d(&compute.queue, usize(active_count), 0)!
 		mut packed := []OpenCLEnemyMotion{len: active_count}
 		mut source_indices := []i32{len: active_count}
-		compute.enemy_buffer.read(&compute.queue, 0, mut packed)!
-		compute.enemy_indices.read(&compute.queue, 0, mut source_indices)!
+		compute.enemy_buffer.buffer()!.read(&compute.queue, 0, mut packed)!
+		compute.enemy_indices.buffer()!.read(&compute.queue, 0, mut source_indices)!
 		mut result := EnemyMotionSoa{
 			source_indices: []int{cap: active_count}
 			angles:         []f32{cap: active_count}
@@ -965,25 +971,33 @@ kernel void step_enemies(global EnemyMotion *items) {
 	}
 
 	fn (mut compute OpenCLCompute) compact_collision_points(points []OpenCLCollisionPoint,
-		slots &cl.Buffer[OpenCLCollisionPoint],
-		active_points &cl.Buffer[OpenCLCollisionPoint]) !(int, &cl.Buffer[OpenCLCollisionPoint]) {
+		slots &cl.ScratchBuffer[OpenCLCollisionPoint],
+		active_points &cl.ScratchBuffer[OpenCLCollisionPoint]) !(int, &cl.ScratchBuffer[OpenCLCollisionPoint]) {
 		if points.len == 0 {
 			return 0, unsafe { active_points }
 		}
 		compute.active_flags_a = ensure_buffer_capacity(&compute.context, compute.active_flags_a, points.len)!
-		slots.write(&compute.queue, 0, points)!
-		compute.collision_point_mark_kernel.set_buffer_arg(0, slots.handle)!
-		compute.collision_point_mark_kernel.set_buffer_arg(1, compute.active_flags_a.handle)!
+		slots.buffer()!.write(&compute.queue, 0, points)!
+		compute.collision_point_mark_kernel.set_buffer_arg(0, slots.buffer()!.handle)!
+		compute.collision_point_mark_kernel.set_buffer_arg(1, compute.active_flags_a.buffer()!.handle)!
 		compute.collision_point_mark_kernel.enqueue_1d(&compute.queue, usize(points.len), 0)!
 		scan, active_count := compute.scan_flags(points.len)!
 		if active_count == 0 {
 			return 0, unsafe { active_points }
 		}
 		allocated_points := ensure_buffer_capacity(&compute.context, active_points, active_count)!
-		compute.collision_point_scatter_kernel.set_buffer_arg(0, slots.handle)!
+		mut keep := false
+		defer {
+			if isnil(active_points) && !keep {
+				mut pending := unsafe { allocated_points }
+				pending.close() or {}
+			}
+		}
+		compute.collision_point_scatter_kernel.set_buffer_arg(0, slots.buffer()!.handle)!
 		compute.collision_point_scatter_kernel.set_buffer_arg(1, scan)!
-		compute.collision_point_scatter_kernel.set_buffer_arg(2, allocated_points.handle)!
+		compute.collision_point_scatter_kernel.set_buffer_arg(2, allocated_points.buffer()!.handle)!
 		compute.collision_point_scatter_kernel.enqueue_1d(&compute.queue, usize(points.len), 0)!
+		keep = true
 		return active_count, allocated_points
 	}
 
@@ -1016,12 +1030,12 @@ kernel void step_enemies(global EnemyMotion *items) {
 		compute.collision_candidate_buffer = ensure_buffer_capacity(&compute.context, compute.collision_candidate_buffer, pair_count)!
 		compute.active_flags_a = ensure_buffer_capacity(&compute.context, compute.active_flags_a, pair_count)!
 		target_count := i32(active_target_count)
-		compute.collision_mark_kernel.set_buffer_arg(0, compute.collision_shots.handle)!
-		compute.collision_mark_kernel.set_buffer_arg(1, compute.collision_targets.handle)!
+		compute.collision_mark_kernel.set_buffer_arg(0, compute.collision_shots.buffer()!.handle)!
+		compute.collision_mark_kernel.set_buffer_arg(1, compute.collision_targets.buffer()!.handle)!
 		compute.collision_mark_kernel.set_arg(2, &target_count)!
 		compute.collision_mark_kernel.set_arg(3, &depth_limit)!
 		compute.collision_mark_kernel.set_arg(4, &angle_limit)!
-		compute.collision_mark_kernel.set_buffer_arg(5, compute.active_flags_a.handle)!
+		compute.collision_mark_kernel.set_buffer_arg(5, compute.active_flags_a.buffer()!.handle)!
 		compute.collision_mark_kernel.enqueue_1d(&compute.queue, usize(pair_count), 0)!
 		scan, candidate_count := compute.scan_flags(pair_count)!
 		if candidate_count == 0 {
@@ -1031,16 +1045,16 @@ kernel void step_enemies(global EnemyMotion *items) {
 				tested_pairs:   pair_count
 			}
 		}
-		compute.collision_scatter_kernel.set_buffer_arg(0, compute.collision_shots.handle)!
-		compute.collision_scatter_kernel.set_buffer_arg(1, compute.collision_targets.handle)!
+		compute.collision_scatter_kernel.set_buffer_arg(0, compute.collision_shots.buffer()!.handle)!
+		compute.collision_scatter_kernel.set_buffer_arg(1, compute.collision_targets.buffer()!.handle)!
 		compute.collision_scatter_kernel.set_arg(2, &target_count)!
 		compute.collision_scatter_kernel.set_arg(3, &depth_limit)!
 		compute.collision_scatter_kernel.set_arg(4, &angle_limit)!
 		compute.collision_scatter_kernel.set_buffer_arg(5, scan)!
-		compute.collision_scatter_kernel.set_buffer_arg(6, compute.collision_candidate_buffer.handle)!
+		compute.collision_scatter_kernel.set_buffer_arg(6, compute.collision_candidate_buffer.buffer()!.handle)!
 		compute.collision_scatter_kernel.enqueue_1d(&compute.queue, usize(pair_count), 0)!
 		mut packed_candidates := []OpenCLShotCollisionCandidate{len: candidate_count}
-		compute.collision_candidate_buffer.read(&compute.queue, 0, mut packed_candidates)!
+		compute.collision_candidate_buffer.buffer()!.read(&compute.queue, 0, mut packed_candidates)!
 		mut candidates := []ShotCollisionCandidate{cap: candidate_count}
 		for candidate in packed_candidates {
 			candidates << ShotCollisionCandidate{

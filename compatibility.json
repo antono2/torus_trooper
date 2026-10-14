@@ -15,7 +15,7 @@
   "ci_sdk": "1.4.309.0",
   "ci_runtime": "v1.2",
   "modules": {
-    "opencl": "v1.0.2",
+    "opencl": "v1.1.0",
     "vulkan": "v3.2.2",
     "vkmemalloc": "v2.6.2",
     "memory": "v1.4.0"

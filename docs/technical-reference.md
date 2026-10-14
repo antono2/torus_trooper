@@ -153,7 +153,7 @@ directly.
 ### Optional OpenCL backend
 
 ```sh
-v -d opencl_compute -cc gcc -o torus_trooper .
+v -d opencl_compute -d opencl_dynamic -cc gcc -o torus_trooper .
 ./torus_trooper --compute opencl
 ```
 
@@ -161,6 +161,13 @@ v -d opencl_compute -cc gcc -o torus_trooper .
 or produces a batch that differs from the CPU reference, the game uses the CPU
 result and reports the fallback. See [Compute backends](#compute-backends) for
 what is checked and which work remains on the CPU.
+
+`-d opencl_dynamic` loads OpenCL at runtime, so an enabled executable can still
+start and use the CPU when the loader is missing. Development headers are needed
+at build time. Omit this flag to link the loader directly. Set `OPENCL_LIBRARY`
+to an absolute library path to select a specific runtime; a failed override is
+reported and falls back to CPU without trying another loader. Device selection
+prefers an available GPU with a source compiler, then another capable device.
 
 ## Advanced settings and controls
 

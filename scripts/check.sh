@@ -77,6 +77,10 @@ if [[ "${TT_OPENCL_SMOKE:-0}" == "1" ]]; then
 	grep -Fq 'compute_shot_mismatched_batches=0' <<<"$opencl_output"
 	grep -Fq 'compute_enemy_mismatched_batches=0' <<<"$opencl_output"
 	grep -Fq 'compute_checksum=3df697f628fcafc9' <<<"$opencl_output"
+
+	dynamic_binary="$build_dir/torus_trooper_opencl_dynamic"
+	python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -d opencl_dynamic -cc gcc -o "$dynamic_binary" .
+	python3 scripts/test_opencl_runtime.py "$dynamic_binary" --require-opencl
 fi
 
 probe_output=$("$binary" --no-sound --volume 0 --res 800 600 --reverse --brightness 70 --luminosity 40 --probe)

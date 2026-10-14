@@ -20,6 +20,10 @@ Review the archive names, manifest, notes and CI evidence before proceeding.
 Create and push only the matching tag, then create a draft with the two archives,
 `SHA256SUMS` and `release-manifest.json`:
 
+The commands below illustrate the published v0.23.1 release. For a new release,
+substitute the version from the tested checkout in every tag, title and archive
+name; do not reuse or move an existing release tag.
+
 ```sh
 git tag v0.23.1
 git push origin v0.23.1

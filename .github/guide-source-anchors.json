@@ -22,7 +22,7 @@
   "sim/compute_backend.v#L785": "pub struct ParticleMotionSoa {",
   "sim/compute_backend.v#L834": "pub fn cpu_step_particle_motion(mut particles ParticleMotionSoa) bool {",
   "sim/compute_backend.v#L86": "pub fn shot_bullet_collision_candidates(shots []Shot, bullets []Bullet) []ShotCollisionCandidate {",
-  "sim/compute_backend_test.v#L267": "fn test_requested_opencl_backend_falls_back_to_identical_cpu_results() {",
+  "sim/compute_backend_test.v#L271": "fn test_requested_opencl_backend_falls_back_to_identical_cpu_results() {",
   "sim/course.v#L161": "pub fn generate_course(seed u32) CourseProfile {",
   "sim/course.v#L288": "pub fn (course &CourseProfile) slice_at(position f32) CourseSlice {",
   "sim/course.v#L299": "pub fn course_side(angle f32, slice CourseSlice) int {",

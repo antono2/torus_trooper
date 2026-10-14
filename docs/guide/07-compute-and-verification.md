@@ -56,6 +56,13 @@ records why. An OpenCL build can also fall back when no device is available or
 when initialization or dispatch fails. The session owns its device resources
 and `App.shutdown` closes it.
 
+The [dynamic build](../technical-reference.md#optional-opencl-backend) also
+reaches this fallback when the OpenCL loader is absent, before device discovery.
+Available devices must support source compilation; selection prefers a GPU and
+reports why candidates were rejected. Reusable scratch owners grow buffers only
+after replacement allocation succeeds and release their retained context
+references during cleanup.
+
 Headless output reports the requested and active backend, verified and
 mismatched batches, fallback counts, per-workload mismatches, collision
 candidate counts and a compute checksum. Read these numbers together with
@@ -96,7 +103,7 @@ the CPU fallback remains part of the supported configuration.
 
 The ordinary binary reports `compute_requested=opencl` but
 `compute_active=cpu` when built without `-d opencl_compute`. The
-[`compute_backend_test.v`](../../sim/compute_backend_test.v#L267) and
+[`compute_backend_test.v`](../../sim/compute_backend_test.v#L271) and
 [`scripts/check.sh`](../../scripts/check.sh) verify that fallback preserves
 gameplay checksums. The optional `TT_OPENCL_SMOKE=1` gate requires a device
 run and checks its batches. Those are correctness checks, not benchmarks.

@@ -3,6 +3,10 @@ module sim
 
 import math
 
+$if opencl_compute ? {
+	import antono2.opencl as cl
+}
+
 fn test_cpu_particle_compute_matches_scalar_reference_and_compacts_slots() {
 	mut simulation := new_simulation(SimulationConfig{ particle_capacity: 4 })
 	simulation.particles[1] = Particle{
@@ -300,6 +304,33 @@ fn test_compute_session_explains_an_unlinked_opencl_fallback() {
 }
 
 $if opencl_compute ? {
+	fn opencl_context_references(context cl.Context) !u32 {
+		mut count := u32(0)
+		cl.check(cl.get_context_info(context, cl.context_reference_count, sizeof(count), &count,
+			unsafe { nil }), 'read test context reference count')!
+		return count
+	}
+
+	fn test_opencl_initial_dispatch_error_releases_unadopted_scratch() ! {
+		mut compute := new_opencl_compute() or {
+			eprintln('OpenCL dispatch cleanup test skipped: ${err}')
+			return
+		}
+		defer { compute.close() }
+		before := opencl_context_references(compute.context.handle)!
+		closed_queue := cl.OwnedCommandQueue{}
+		mut items := [OpenCLParticleMotion{ life: 3 }]
+		mut failed := false
+		run_motion_kernel(&compute.context, &closed_queue, &compute.particle_kernel,
+			unsafe { &cl.ScratchBuffer[OpenCLParticleMotion](nil) }, mut items) or {
+			failed = true
+			assert err.msg().contains('closed queue')
+		}
+		assert failed
+		assert opencl_context_references(compute.context.handle)! == before
+		assert isnil(compute.particle_buffer)
+	}
+
 	fn test_opencl_session_matches_all_cpu_motion_kernels() {
 		assert sizeof(OpenCLParticleSlot) == 24
 		assert sizeof(OpenCLBulletSlot) == 36
@@ -424,13 +455,13 @@ $if opencl_compute ? {
 		assert batch.active_shots == 2
 		assert batch.active_targets == 3
 		assert batch.tested_pairs == 6
-		assert compute.collision_shot_slots.count == shots.len
-		assert compute.collision_shots.count == 2
-		assert compute.collision_target_slots.count == enemies.len
-		assert compute.collision_targets.count == 3
-		assert compute.active_flags_a.count == 6
-		assert compute.active_flags_b.count == 6
-		assert compute.collision_candidate_buffer.count == 6
+		assert compute.collision_shot_slots.buffer()!.count == shots.len
+		assert compute.collision_shots.buffer()!.count == 2
+		assert compute.collision_target_slots.buffer()!.count == enemies.len
+		assert compute.collision_targets.buffer()!.count == 3
+		assert compute.active_flags_a.buffer()!.count == 6
+		assert compute.active_flags_b.buffer()!.count == 6
+		assert compute.collision_candidate_buffer.buffer()!.count == 6
 	}
 
 	fn test_opencl_generates_stable_shot_bullet_candidates() ! {
@@ -483,14 +514,14 @@ $if opencl_compute ? {
 		assert batch.active_shots == 1
 		assert batch.active_targets == 3
 		assert batch.tested_pairs == 3
-		assert compute.collision_shot_slots.count == shots.len
-		assert compute.collision_shots.count == 1
-		assert compute.collision_target_slots.count == bullets.len
-		assert compute.collision_targets.count == 3
+		assert compute.collision_shot_slots.buffer()!.count == shots.len
+		assert compute.collision_shots.buffer()!.count == 1
+		assert compute.collision_target_slots.buffer()!.count == bullets.len
+		assert compute.collision_targets.buffer()!.count == 3
 		// Scan buffers retain the largest slot count used earlier in the batch.
-		assert compute.active_flags_a.count == shots.len
-		assert compute.active_flags_b.count == shots.len
-		assert compute.collision_candidate_buffer.count == 3
+		assert compute.active_flags_a.buffer()!.count == shots.len
+		assert compute.active_flags_b.buffer()!.count == shots.len
+		assert compute.collision_candidate_buffer.buffer()!.count == 3
 	}
 
 	fn test_opencl_live_collision_candidate_validation_is_observational() {
@@ -658,12 +689,25 @@ $if opencl_compute ? {
 			lives: [3]
 		}
 		compute.step_particles(mut one)!
-		first_handle := compute.particle_buffer.handle
+		first_handle := compute.particle_buffer.buffer()!.handle
 		assert !isnil(first_handle)
-		assert compute.particle_buffer.count == 1
+		assert compute.particle_buffer.buffer()!.count == 1
 
 		compute.step_particles(mut one)!
-		assert compute.particle_buffer.handle == first_handle
+		assert compute.particle_buffer.buffer()!.handle == first_handle
+
+		// A rejected reservation must leave the owner and its contents usable.
+		mut rejected := false
+		ensure_buffer_capacity(&compute.context, compute.particle_buffer, -1) or {
+			rejected = true
+			assert err.msg().contains('negative')
+		}
+		assert rejected
+		assert compute.particle_buffer.buffer()!.handle == first_handle
+		mut retained := []OpenCLParticleMotion{len: 1}
+		compute.particle_buffer.buffer()!.read(&compute.queue, 0, mut retained)!
+		assert retained[0].angle == one.angles[0]
+		assert retained[0].life == one.lives[0]
 
 		mut three := ParticleMotionSoa{
 			source_indices: [0, 1, 2]
@@ -674,7 +718,7 @@ $if opencl_compute ? {
 			lives: [3, 4, 5]
 		}
 		compute.step_particles(mut three)!
-		assert compute.particle_buffer.count == 3
+		assert compute.particle_buffer.buffer()!.count == 3
 	}
 
 	fn test_opencl_compacts_particle_pool_in_stable_order() ! {
@@ -714,10 +758,10 @@ $if opencl_compute ? {
 
 		assert actual.source_indices == [1, 3, 6]
 		assert compare_particle_motion(expected, actual, 0.00001).matches()
-		assert compute.particle_slots.count == 7
-		assert compute.active_flags_a.count == 7
-		assert compute.active_flags_b.count == 7
-		assert compute.particle_indices.count == 7
+		assert compute.particle_slots.buffer()!.count == 7
+		assert compute.active_flags_a.buffer()!.count == 7
+		assert compute.active_flags_b.buffer()!.count == 7
+		assert compute.particle_indices.buffer()!.count == 7
 	}
 
 	fn test_opencl_compacts_bullet_pool_in_stable_order() ! {
@@ -763,8 +807,8 @@ $if opencl_compute ? {
 
 		assert actual.source_indices == [0, 4, 6]
 		assert compare_bullet_motion(expected, actual, 0.00001).matches()
-		assert compute.bullet_slots.count == 7
-		assert compute.bullet_indices.count == 7
+		assert compute.bullet_slots.buffer()!.count == 7
+		assert compute.bullet_indices.buffer()!.count == 7
 	}
 
 	fn test_opencl_compacts_only_released_shots_in_stable_order() ! {
@@ -805,8 +849,8 @@ $if opencl_compute ? {
 
 		assert actual.source_indices == [2, 5]
 		assert compare_shot_motion(expected, actual, 0.00001).matches()
-		assert compute.shot_slots.count == 7
-		assert compute.shot_indices.count == 7
+		assert compute.shot_slots.buffer()!.count == 7
+		assert compute.shot_indices.buffer()!.count == 7
 	}
 
 	fn test_opencl_compacts_prepared_enemies_in_stable_order() ! {
@@ -839,8 +883,8 @@ $if opencl_compute ? {
 
 		assert actual.source_indices == [1, 5]
 		assert compare_enemy_motion(expected, actual, 0.00001).matches()
-		assert compute.enemy_slots.count == 7
-		assert compute.enemy_indices.count == 7
+		assert compute.enemy_slots.buffer()!.count == 7
+		assert compute.enemy_indices.buffer()!.count == 7
 	}
 }
 

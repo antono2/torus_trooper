@@ -38,11 +38,14 @@ release's `SHA256SUMS` before extraction. To test locally:
 python3 scripts/test_release_package.py PACKAGE --project torus --checksums SHA256SUMS
 ```
 
-The published Windows v0.23.0 package fails the unrelated-directory graphical
-probe because its shaders use working-directory-relative paths. The source fix
-selects assets beside the executable and preserves explicit user file paths.
-Rebuilding and publishing a later package is required to deliver this fix to
-release-download users; existing release assets are not replaced by these tests.
+The Windows v0.23.0 package uses working-directory-relative shader paths and can
+fail when launched from an unrelated directory. Upgrade to
+[v0.23.1](https://github.com/antono2/torus_trooper/releases/tag/v0.23.1) or later:
+that release selects assets beside the executable while preserving explicit user
+file paths. Its published Linux and Windows archives passed the
+[package-consumer checks](https://github.com/antono2/torus_trooper/actions/runs/38532525783),
+including launch from an unrelated directory. The older v0.23.0 assets remain
+unchanged; these checks do not modify downloaded packages.
 
 ## Diagnose and recover setup
 

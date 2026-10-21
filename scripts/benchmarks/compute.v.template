@@ -1,3 +1,6 @@
+// Benchmark template for OpenCL startup, program caching and verified particle updates.
+// scripts/benchmark_compute.py copies it into a temporary sim test; edit this template
+// and rerun that script to regenerate the benchmark source and measurement report.
 module sim
 
 import antono2.opencl as cl

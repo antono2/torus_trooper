@@ -40,7 +40,7 @@ target to use.
 ## Understand the V–C boundary
 
 [`runtime/app.v`](../../runtime/app.v#L41) declares `C.tt_platform_*` functions;
-[`vulkan_bridge.h`](../../runtime/vulkan_bridge.h#L136) implements the platform,
+[`vulkan_bridge.h`](../../runtime/vulkan_bridge.h#L139) implements the platform,
 swapchain, pipelines, per-frame commands, input mapping and presentation.
 [`vulkan_memory.v`](../../runtime/vulkan_memory.v#L53) owns the three mapped
 vertex buffers through the V Vulkan allocator. It attaches their handles and

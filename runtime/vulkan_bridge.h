@@ -7,6 +7,9 @@
 #define GLFW_INCLUDE_VULKAN
 #endif
 #include <GLFW/glfw3.h>
+#ifdef __linux__
+#include "window_startup.h"
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -2948,6 +2951,10 @@ static TTPlatform *tt_platform_create(int width, int height, const char *title,
     // Borderless fullscreen must remain visible when another monitor receives
     // focus; GLFW's fullscreen default otherwise minimizes it automatically.
     glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+#ifdef __linux__
+    /* Avoid GLFW's synchronous implicit X11 show inside glfwCreateWindow. */
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+#endif
     TTPlatform *platform = calloc(1, sizeof(*platform));
     if (!platform) {
         tt_set_error("out of memory while creating platform state");
@@ -2971,7 +2978,16 @@ static TTPlatform *tt_platform_create(int width, int height, const char *title,
     }
     glfwSetWindowUserPointer(platform->window, platform);
     glfwSetWindowTitle(platform->window, "Torus Trooper  |  LOADING 0%");
+#ifdef __linux__
+    char window_error[256] = {0};
+    if (!a2_glfw_show_startup(platform->window, window_error, sizeof(window_error))) {
+        tt_set_error(window_error);
+        tt_platform_destroy(platform);
+        return NULL;
+    }
+#else
     glfwShowWindow(platform->window);
+#endif
     glfwPollEvents();
     glfwSetCharCallback(platform->window, tt_character_callback);
     glfwSetKeyCallback(platform->window, tt_key_callback);

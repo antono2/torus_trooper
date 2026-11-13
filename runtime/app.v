@@ -4,7 +4,7 @@ module runtime
 import sim
 import time
 
-#flag linux -lglfw
+#flag linux -lglfw -ldl
 
 #flag linux -lvulkan
 

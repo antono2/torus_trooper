@@ -6,6 +6,8 @@ import time
 
 #flag linux -lglfw
 
+#flag linux -ldl
+
 #flag linux -lvulkan
 
 #flag darwin -lglfw

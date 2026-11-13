@@ -10,6 +10,8 @@ import time
 #flag -lX11
 #include <X11/Xlib.h>
 
+// Xlib defines Display as a typedef; the pinned V3 frontend must retain it.
+@[typedef]
 struct C.Display {}
 
 @[typedef]

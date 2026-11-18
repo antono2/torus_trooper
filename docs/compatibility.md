@@ -9,7 +9,7 @@ The existing dependency checker also verifies the installed transitive graph.
 
 For an upgrade, change the manifest and any affected `v.mod` declaration together.
 Run `python3 scripts/test_distribution.py` and
-`python3 scripts/compatibility.py --platform linux` (or `--platform windows`).
+`v run scripts/compatibility.vsh --platform linux` (or `--platform windows`).
 Require the full application CI, including both package consumers, before
 promoting release assets. A passing module build alone is insufficient.
 

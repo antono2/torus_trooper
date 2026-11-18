@@ -122,7 +122,7 @@ replaces the destination and destroys the cache before the device. Concurrent
 processes may replace each other's compatible cache; the last successful writer
 wins. The cache never decides shader inputs or gameplay state.
 
-`test_pipeline_cache.py` checks roundtrip, truncation, payload corruption, stale
+`scripts/test_pipeline_cache.vsh` checks roundtrip, truncation, payload corruption, stale
 vendor/UUID, missing-parent writes, default-location reuse and blocked cache
 directories under Vulkan validation. The renderer
 benchmark explicitly disables the application cache so warm measurements remain

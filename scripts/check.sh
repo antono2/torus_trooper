@@ -119,5 +119,5 @@ if [[ "${TT_VISUAL_SMOKE:-0}" == "1" ]]; then
 fi
 
 if [[ "${TT_REPLAY_UI_SMOKE:-0}" == "1" ]]; then
-    bash scripts/test_replay_ui.sh "$binary"
+    v run scripts/test_replay_ui.vsh "$binary"
 fi

@@ -196,7 +196,8 @@ jobs:
           if grep -Eiq 'validation error|vuid-|segmentation|assert|fatal' validation.log; then exit 1; fi
       - name: Verify opt-in GPU profiling and capture labels
         run: |
-          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/benchmark_renderer.py ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
+          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/benchmark_renderer.vsh ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
+          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/benchmark_pipeline_cache.vsh ./torus_trooper --runs 1 --output cache-profile.json
           xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/test_pipeline_cache.vsh ./torus_trooper
       - name: Compile and smoke test with TinyCC
         run: v run scripts/check_compiler_diagnostics.vsh -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
@@ -212,10 +213,14 @@ jobs:
           v run scripts/test_opencl_runtime.vsh ./torus_trooper_opencl_dynamic_tcc --require-opencl
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
+      - name: Exercise the OpenCL benchmark report
+        run: v run scripts/benchmark_compute.vsh --runs 1 --output compute-profile.json
       - name: Package Linux candidate
         run: v run scripts/package_linux.vsh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe Linux package without host runtime libraries
-        run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
+        run: |
+          v -skip-running -o "$RUNNER_TEMP/test-linux-package" scripts/test_linux_package.vsh
+          xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY "$RUNNER_TEMP/test-linux-package" torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe package on Ubuntu 26.04 without installing GLFW
         run: |
           xvfb-run -a bash -c '

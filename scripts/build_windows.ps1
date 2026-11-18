@@ -68,7 +68,9 @@ try {
     if ($Verify) {
         & python scripts/test_build_tools.py
         if ($LASTEXITCODE -ne 0) { throw "Build tool tests failed." }
-        & python scripts/build_shaders.py
+        & v run scripts/build_shaders.vsh --self-test
+        if ($LASTEXITCODE -ne 0) { throw "Shader self-test failed." }
+        & v run scripts/build_shaders.vsh
         if ($LASTEXITCODE -ne 0) { throw "Shader compilation failed." }
         $TestFlags = $CompilerFlags + @(
             '-cflags', ('-I"' + (Join-Path $env:VULKAN_SDK 'Include') + '"'),

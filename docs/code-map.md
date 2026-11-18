@@ -76,7 +76,7 @@ files; the runtime does not read shader source. With `glslangValidator` and
 `spirv-val` installed, rebuild and validate from the repository root:
 
 ```sh
-python3 scripts/build_shaders.py
+v run scripts/build_shaders.vsh
 ```
 
 Commit the rebuilt binaries along with their shader sources. CI tests freshly

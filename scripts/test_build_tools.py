@@ -5,10 +5,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-from tempfile import TemporaryDirectory
 import unittest
 
-from build_shaders import build_shaders
 from check_compiler_diagnostics import ROOT, project_diagnostic
 
 
@@ -40,22 +38,6 @@ class CompilerDiagnosticsTests(unittest.TestCase):
 
 
 class ShaderBuildTests(unittest.TestCase):
-    def test_bad_shader_does_not_replace_existing_binaries(self):
-        with TemporaryDirectory() as temporary:
-            source = Path(temporary) / "source"
-            output = Path(temporary) / "output"
-            source.mkdir()
-            output.mkdir()
-            (source / "first.vert").write_text(
-                "#version 450\nvoid main() { gl_Position = vec4(0); }\n")
-            (source / "last.frag").write_text("#version 450\ninvalid shader\n")
-            existing = output / "first.vert.spv"
-            existing.write_bytes(b"previous shader binary")
-            with self.assertRaises(subprocess.CalledProcessError):
-                build_shaders(source, output)
-            self.assertEqual(existing.read_bytes(), b"previous shader binary")
-            self.assertEqual(list(output.iterdir()), [existing])
-
     def test_cpu_and_gpu_protocol_values_match(self):
         shader = (ROOT / "shaders/render_codes.glsl").read_text()
         gpu = dict(re.findall(r"const float (\w+) = ([\d.]+);", shader))

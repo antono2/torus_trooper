@@ -25,12 +25,15 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: prantlf/setup-v-action@92f20bea50d2c9931a28c96bb4997a3c7357baf0 # v4
+        with:
+          version: 0.5.2
       - name: Resolve tested compatibility manifest
         id: compat
         shell: bash
         run: |
           python scripts/test_distribution.py
-          python scripts/test_doctor.py
+          v run scripts/doctor.vsh --self-test
           python scripts/test_prepare_release.py
           python scripts/compatibility.py --github-output "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -165,7 +168,8 @@ jobs:
       - name: Compile and validate shaders
         run: |
           python3 scripts/test_build_tools.py
-          python3 scripts/build_shaders.py
+          v run scripts/build_shaders.vsh --self-test
+          v run scripts/build_shaders.vsh
       - name: Test deterministic simulation and runtime
         run: |
           python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test torus_trooper_test.v

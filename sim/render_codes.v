@@ -3,7 +3,7 @@ module sim
 // RenderInstance.kind is a packed wire format, not a gameplay tuning value.
 // Each base identifies an object family; the fractional part carries size,
 // shape, damage or particle data. Matching GLSL constants live in
-// shaders/render_codes.glsl and are checked by test_build_tools.py.
+// shaders/render_codes.glsl and are checked by the build_shaders.vsh self-test.
 const render_player_kind = f32(1.0)
 const render_shot_kind = f32(2.0)
 const render_star_shot_kind = f32(2.25)

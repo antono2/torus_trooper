@@ -25,9 +25,9 @@ if grep -REni '\b(sdl|sdl2|vgl)\b|#flag.*-l(gl|opengl)([[:space:]]|$)' \
 	exit 1
 fi
 
-python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test torus_trooper_test.v
-python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test font5x7 sim runtime
-python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o "$binary" .
+v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test torus_trooper_test.v
+v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test font5x7 sim runtime
+v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc -o "$binary" .
 
 linked_libraries=$(ldd "$binary")
 if grep -Eiq 'libSDL|libOpenGL|libGL(X|\.)' <<<"$linked_libraries"; then
@@ -62,7 +62,7 @@ grep -Fq 'compute_checksum=3df697f628fcafc9' <<<"$fallback_output"
 
 if [[ "${TT_OPENCL_SMOKE:-0}" == "1" ]]; then
 	opencl_binary="$build_dir/torus_trooper_opencl"
-	python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -cc gcc -o "$opencl_binary" .
+	v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -cc gcc -o "$opencl_binary" .
 	opencl_output=$($opencl_binary --headless --ticks 600 --compute opencl --no-sound --volume 0)
 	printf '%s\n' "$opencl_output"
 	grep -Fq 'checksum=490efd84cf12692f' <<<"$opencl_output"
@@ -79,7 +79,7 @@ if [[ "${TT_OPENCL_SMOKE:-0}" == "1" ]]; then
 	grep -Fq 'compute_checksum=3df697f628fcafc9' <<<"$opencl_output"
 
 	dynamic_binary="$build_dir/torus_trooper_opencl_dynamic"
-	python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -d opencl_dynamic -cc gcc -o "$dynamic_binary" .
+	v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc gcc -o "$dynamic_binary" .
 	python3 scripts/test_opencl_runtime.py "$dynamic_binary" --require-opencl
 fi
 

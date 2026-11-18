@@ -66,8 +66,6 @@ try {
     # expect typed pointers; both have the same Windows x64 pointer ABI.
     $CompilerFlags = @('-cc', 'clang', '-cflags', '-Wno-incompatible-pointer-types')
     if ($Verify) {
-        & python scripts/test_build_tools.py
-        if ($LASTEXITCODE -ne 0) { throw "Build tool tests failed." }
         & v run scripts/build_shaders.vsh --self-test
         if ($LASTEXITCODE -ne 0) { throw "Shader self-test failed." }
         & v run scripts/build_shaders.vsh
@@ -81,6 +79,11 @@ try {
         $TestDirectory = Join-Path ([IO.Path]::GetTempPath()) ("torus-trooper-tests-" + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $TestDirectory | Out-Null
         try {
+            $DiagnosticFilter = Join-Path $TestDirectory 'check_compiler_diagnostics.exe'
+            & v -cc clang -o $DiagnosticFilter scripts/check_compiler_diagnostics.vsh
+            if ($LASTEXITCODE -ne 0) { throw "Could not build the compiler diagnostic filter." }
+            & $DiagnosticFilter --self-test
+            if ($LASTEXITCODE -ne 0) { throw "Compiler diagnostic filter tests failed." }
             # V3's test runner can hide Clang diagnostics on Windows.
             $TestFiles = @('torus_trooper_test.v') + @(
                 Get-ChildItem font5x7, sim, runtime -Filter '*_test.v' -File | ForEach-Object { $_.FullName }
@@ -88,7 +91,7 @@ try {
             $TestIndex = 0
             foreach ($TestFile in $TestFiles) {
                 $TestExecutable = Join-Path $TestDirectory "torus-test-$TestIndex.exe"
-                & python scripts/check_compiler_diagnostics.py -- v @TestFlags -o $TestExecutable $TestFile
+                & $DiagnosticFilter -- v @TestFlags -o $TestExecutable $TestFile
                 if ($LASTEXITCODE -ne 0) { throw "Test compilation failed: $TestFile" }
                 $TestProcess = Start-Process -FilePath $TestExecutable `
                     -WorkingDirectory $ProjectDirectory -WindowStyle Hidden -PassThru
@@ -103,18 +106,15 @@ try {
                 $TestIndex++
             }
             Write-Host "Windows V3 tests passed: $TestIndex"
+            & $DiagnosticFilter -- v @CompilerFlags -o $OutputPath .
+            if ($LASTEXITCODE -ne 0) { throw "Torus Trooper compilation failed." }
         } finally {
             Get-ChildItem -LiteralPath $TestDirectory -File | Remove-Item -Force
             Remove-Item -LiteralPath $TestDirectory
         }
-    }
-    if ($Verify) {
-        & python scripts/check_compiler_diagnostics.py -- v @CompilerFlags -o $OutputPath .
     } else {
         & v @CompilerFlags -o $OutputPath .
-    }
-    if ($LASTEXITCODE -ne 0) {
-        throw "Torus Trooper compilation failed."
+        if ($LASTEXITCODE -ne 0) { throw "Torus Trooper compilation failed." }
     }
     if ($Verify) {
         foreach ($Arguments in @(

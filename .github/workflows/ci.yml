@@ -168,15 +168,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool x11-utils bubblewrap patchelf libxxf86vm1 libx11-xcb1 ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools libx11-dev openbox xauth
       - name: Compile and validate shaders
         run: |
-          python3 scripts/test_build_tools.py
+          v run scripts/check_compiler_diagnostics.vsh --self-test
           v run scripts/build_shaders.vsh --self-test
           v run scripts/build_shaders.vsh
       - name: Test deterministic simulation and runtime
         run: |
-          python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test torus_trooper_test.v
-          python3 scripts/check_compiler_diagnostics.py -- v -cc gcc test font5x7 sim runtime
+          v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test torus_trooper_test.v
+          v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test font5x7 sim runtime
       - name: Compile game
-        run: python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o torus_trooper .
+        run: v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc -o torus_trooper .
       - name: Test bounded Linux window startup
         run: |
           v -cc tcc -o "$RUNNER_TEMP/window-startup-check" tests/window_startup.v
@@ -197,16 +197,16 @@ jobs:
           xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/benchmark_renderer.py ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
           xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/test_pipeline_cache.py ./torus_trooper
       - name: Compile and smoke test with TinyCC
-        run: python3 scripts/check_compiler_diagnostics.py -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
+        run: v run scripts/check_compiler_diagnostics.vsh -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
       - name: Test OpenCL motion backend
         # V3 currently drops generic buffer typedefs in test files that do not
         # call the optional OpenCL path. Keep those declarations for this suite.
-        run: python3 scripts/check_compiler_diagnostics.py -- v -no-skip-unused -d opencl_compute -cc gcc test sim
+        run: v run scripts/check_compiler_diagnostics.vsh -- v -no-skip-unused -d opencl_compute -cc gcc test sim
       - name: Compile OpenCL backend with TinyCC
         run: |
-          python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc .
+          v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc .
           ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
-          python3 scripts/check_compiler_diagnostics.py -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
+          v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
           python3 scripts/test_opencl_runtime.py ./torus_trooper_opencl_dynamic_tcc --require-opencl
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
@@ -409,7 +409,7 @@ jobs:
           $env:GLFW_INCLUDE = Join-Path $GlfwRoot 'include'
           $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
           $DynamicExecutable = Join-Path $env:RUNNER_TEMP 'torus-opencl-dynamic.exe'
-          python scripts/check_compiler_diagnostics.py -- v -subsystem console -d opencl_compute -d opencl_dynamic -cc clang -cflags -Wno-incompatible-pointer-types -o $DynamicExecutable .
+          v run scripts/check_compiler_diagnostics.vsh -- v -subsystem console -d opencl_compute -d opencl_dynamic -cc clang -cflags -Wno-incompatible-pointer-types -o $DynamicExecutable .
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL compilation failed' }
           python scripts/test_opencl_runtime.py $DynamicExecutable
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL fallback verification failed' }
@@ -420,7 +420,7 @@ jobs:
           $env:GLFW_INCLUDE = Join-Path $GlfwRoot 'include'
           $env:GLFW_LIB = Join-Path $GlfwRoot 'lib'
           $CacheExecutable = Join-Path $env:RUNNER_TEMP 'torus-cache-probe.exe'
-          python scripts/check_compiler_diagnostics.py -- v -subsystem console -cc clang -cflags -Wno-incompatible-pointer-types -o $CacheExecutable .
+          v run scripts/check_compiler_diagnostics.vsh -- v -subsystem console -cc clang -cflags -Wno-incompatible-pointer-types -o $CacheExecutable .
           if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache probe compilation failed' }
           python scripts/test_pipeline_cache.py $CacheExecutable
           if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache fallback verification failed' }

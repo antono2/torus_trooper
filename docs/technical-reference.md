@@ -500,13 +500,13 @@ xvfb-run -a v run scripts/test_replay_ui.vsh
 This silent check uses temporary player data and covers keyboard menu/resume,
 exact suspended-state restoration, replay saving, renaming, export/import,
 sorting, playback, deletion and returning to the title. It requires Xvfb,
-xdotool, xprop, stdbuf and Python. Set `TT_REPLAY_SCREENSHOTS` to a directory
+xdotool, xprop and stdbuf. Set `TT_REPLAY_SCREENSHOTS` to a directory
 and install ImageMagick to capture its screens.
 
 ### Complete regression script
 
 ```sh
-./scripts/check.sh
+v run scripts/check.vsh
 ```
 
 The script checks documentation links, native tests, builds, fixed headless
@@ -525,7 +525,7 @@ explains the scope of each check and platform-specific development loops.
 
 ### Compiler diagnostics
 
-CI and `scripts/check.sh` fail when a game compilation emits a warning or notice
+CI and `scripts/check.vsh` fail when a game compilation emits a warning or notice
 from maintained project sources. Windows verification (`build_windows.ps1 -Verify`)
 uses the same check. Dependency diagnostics remain visible without being counted
 as project warnings, and the separate V compiler bootstrap is outside this gate.

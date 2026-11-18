@@ -45,11 +45,11 @@ before it reaches rendering or simulation.
 | `v -cc gcc test torus_trooper_test.v` | Option parsing and launch decisions. | A working Vulkan driver. |
 | `v -cc gcc test sim runtime` | Focused rules, geometry, replay, persistence, audio lifecycle and compute fallback. | The appearance of a presented frame. |
 | Headless 600-tick command | A fixed build's gameplay, render, course and compute checksums. | Cross-platform bit identity or visual quality. |
-| `./scripts/check.sh` | Tests, build, headless baselines, fallback and a Vulkan surface/allocation probe. | Human judgment of motion, sound and layout. |
-| `TT_VISUAL_SMOKE=1 ./scripts/check.sh` | An automated effects scene can run in a graphical environment. | A complete visual review. |
-| `TT_OPENCL_SMOKE=1 ./scripts/check.sh` | An installed OpenCL device runs the checked backend. | A measured performance improvement. |
+| `v run scripts/check.vsh` | Tests, build, headless baselines, fallback and a Vulkan surface/allocation probe. | Human judgment of motion, sound and layout. |
+| `TT_VISUAL_SMOKE=1 v run scripts/check.vsh` | An automated effects scene can run in a graphical environment. | A complete visual review. |
+| `TT_OPENCL_SMOKE=1 v run scripts/check.vsh` | An installed OpenCL device runs the checked backend. | A measured performance improvement. |
 
-The gate in [`scripts/check.sh`](../../scripts/check.sh) also rejects legacy
+The gate in [`scripts/check.vsh`](../../scripts/check.vsh) also rejects legacy
 SDL, VGL and OpenGL paths. It compares fixed headless values and checks an
 invalid-resolution error path. The CI workflow
 [`ci.yml`](../../.github/workflows/ci.yml) builds and tests on multiple
@@ -92,7 +92,7 @@ sh scripts/build_linux_v3.sh
 ./torus_trooper --no-sound --volume 0 --debug-view=boundaries,slices,enemies
 
 # Before publication: the broader Linux gate.
-PATH="$tt_toolchain/v:$PATH" ./scripts/check.sh
+PATH="$tt_toolchain/v:$PATH" v run scripts/check.vsh
 ```
 
 The graphical command opens the game for a human check. The last command

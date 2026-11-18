@@ -101,7 +101,7 @@ requires the simulation to know which audio library plays the sound.
 
 [`audio_test.v`](../../runtime/audio_test.v#L17) uses a null backend to test
 effect calls, missing assets, forced initialization failure and repeated
-shutdown without speakers. [`scripts/check.sh`](../../scripts/check.sh)
+shutdown without speakers. [`scripts/check.vsh`](../../scripts/check.vsh)
 adds a Vulkan probe for platform startup and mapped buffers. Neither check
 proves audio mix quality or device recovery, which require their own review
 on intended hardware.

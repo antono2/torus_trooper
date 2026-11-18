@@ -10,8 +10,9 @@ const process_poll_interval = 10 * time.millisecond
 
 pub struct Result {
 pub:
-	stdout string
-	stderr string
+	stdout    string
+	stderr    string
+	exit_code int
 }
 
 pub fn temporary_directory(prefix string) !string {
@@ -21,6 +22,14 @@ pub fn temporary_directory(prefix string) !string {
 }
 
 pub fn capture(binary string, args []string, root string, environment map[string]string, timeout time.Duration) !Result {
+	result := capture_status(binary, args, root, environment, timeout)!
+	if result.exit_code != 0 {
+		return error('${binary} exited with status ${result.exit_code}\n${result.stdout}${result.stderr}')
+	}
+	return result
+}
+
+pub fn capture_status(binary string, args []string, root string, environment map[string]string, timeout time.Duration) !Result {
 	if !os.is_file(binary) || !os.is_executable(binary) {
 		return error('Expected an executable at ${binary}')
 	}
@@ -57,12 +66,9 @@ pub fn capture(binary string, args []string, root string, environment map[string
 			time.sleep(process_poll_interval)
 		}
 	}
-	result := Result{
-		stdout: stdout.str()
-		stderr: stderr.str()
+	return Result{
+		stdout:    stdout.str()
+		stderr:    stderr.str()
+		exit_code: child.code
 	}
-	if child.code != 0 {
-		return error('${binary} exited with status ${child.code}\n${result.stdout}${result.stderr}')
-	}
-	return result
 }

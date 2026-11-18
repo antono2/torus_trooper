@@ -80,7 +80,7 @@ if [[ "${TT_OPENCL_SMOKE:-0}" == "1" ]]; then
 
 	dynamic_binary="$build_dir/torus_trooper_opencl_dynamic"
 	v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc gcc -o "$dynamic_binary" .
-	python3 scripts/test_opencl_runtime.py "$dynamic_binary" --require-opencl
+	v run scripts/test_opencl_runtime.vsh "$dynamic_binary" --require-opencl
 fi
 
 probe_output=$("$binary" --no-sound --volume 0 --res 800 600 --reverse --brightness 70 --luminosity 40 --probe)

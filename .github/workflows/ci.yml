@@ -197,7 +197,7 @@ jobs:
       - name: Verify opt-in GPU profiling and capture labels
         run: |
           xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/benchmark_renderer.py ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
-          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation python3 scripts/test_pipeline_cache.py ./torus_trooper
+          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/test_pipeline_cache.vsh ./torus_trooper
       - name: Compile and smoke test with TinyCC
         run: v run scripts/check_compiler_diagnostics.vsh -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
       - name: Test OpenCL motion backend
@@ -209,7 +209,7 @@ jobs:
           v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc .
           ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
           v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
-          python3 scripts/test_opencl_runtime.py ./torus_trooper_opencl_dynamic_tcc --require-opencl
+          v run scripts/test_opencl_runtime.vsh ./torus_trooper_opencl_dynamic_tcc --require-opencl
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate
@@ -417,7 +417,7 @@ jobs:
           $DynamicExecutable = Join-Path $env:RUNNER_TEMP 'torus-opencl-dynamic.exe'
           v run scripts/check_compiler_diagnostics.vsh -- v -subsystem console -d opencl_compute -d opencl_dynamic -cc clang -cflags -Wno-incompatible-pointer-types -o $DynamicExecutable .
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL compilation failed' }
-          python scripts/test_opencl_runtime.py $DynamicExecutable
+          v run scripts/test_opencl_runtime.vsh $DynamicExecutable
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic OpenCL fallback verification failed' }
       - name: Verify pipeline cache persistence and fallback on Windows
         shell: pwsh
@@ -428,7 +428,7 @@ jobs:
           $CacheExecutable = Join-Path $env:RUNNER_TEMP 'torus-cache-probe.exe'
           v run scripts/check_compiler_diagnostics.vsh -- v -subsystem console -cc clang -cflags -Wno-incompatible-pointer-types -o $CacheExecutable .
           if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache probe compilation failed' }
-          python scripts/test_pipeline_cache.py $CacheExecutable
+          v run scripts/test_pipeline_cache.vsh $CacheExecutable
           if ($LASTEXITCODE -ne 0) { throw 'Pipeline cache fallback verification failed' }
       - name: Package and probe Windows candidate
         shell: pwsh

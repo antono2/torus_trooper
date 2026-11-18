@@ -541,11 +541,12 @@ python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o torus_trooper .
 After building, create an archive with its launcher and runtime libraries:
 
 ```sh
-bash scripts/package_linux.sh torus-trooper-linux-x86_64.tar.gz
+v run scripts/package_linux.vsh torus-trooper-linux-x86_64.tar.gz
 ```
 
-Packaging requires Python 3, `glslangValidator`, `spirv-val`, `patchelf` and the distribution's installed
-runtime-library license notices. `play.sh` sets the working directory and adds
+Packaging requires V, `glslangValidator` or `glslang`, `spirv-val`, `patchelf`,
+and the distribution's installed runtime-library license notices.
+`play.sh` sets the working directory and adds
 `lib/` to the library search path; the executable also has a relative search
 path. Bundled library notices and a version manifest live in
 `thirdparty/linux-runtime/`. The graphics driver and glibc remain system dependencies.

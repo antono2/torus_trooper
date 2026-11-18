@@ -49,7 +49,7 @@ unchanged; these checks do not modify downloaded packages.
 
 ## Diagnose and recover setup
 
-Run `python scripts/doctor.py --v PATH_TO_TESTED_V --modules MODULE_DIRECTORY`
+Run `v run scripts/doctor.vsh --v PATH_TO_TESTED_V --modules MODULE_DIRECTORY`
 for compiler, tools and installed-release checks. Add `--runtime` to enumerate
 Vulkan devices, or `--json` to capture a support report. Diagnostics do not repair
 caches or change environment variables. GPU enumeration does not establish video

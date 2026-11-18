@@ -5,16 +5,15 @@ archive names from `v.mod`; compatibility pins remain in `compatibility.json`.
 Review and merge the change, then wait for all main CI jobs, including both
 package consumers, to pass. Do not rebuild the binaries after these checks.
 
-In a clean checkout of that exact main commit, with Python 3 and authenticated
-GitHub CLI:
+In a clean checkout of that exact main commit, with V and an authenticated GitHub CLI:
 
 ```sh
-python scripts/prepare_release.py RUN_ID --output /path/to/new-release-directory
+v run scripts/prepare_release.vsh RUN_ID --output /path/to/new-release-directory
 ```
 
 The command checks the source commit and all required jobs, downloads the exact
 tested archives, and generates `SHA256SUMS`, a source/compatibility manifest and
-release notes. It refuses an existing output directory and does not publish.
+release notes. It requires a new output directory and leaves publication for review.
 Review the archive names, manifest, notes and CI evidence before proceeding.
 
 Create and push only the matching tag, then create a draft with the two archives,

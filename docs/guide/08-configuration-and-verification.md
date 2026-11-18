@@ -71,21 +71,23 @@ assume a checkout at the repository root and the
 
 ### Linux
 
-[`build_linux_v3.sh`](../../scripts/build_linux_v3.sh) prepares its tested V3
-compiler, V modules and Vulkan headers on the first run; later runs reuse them.
+[`build_linux_v3.vsh`](../../scripts/build_linux_v3.vsh) prepares the tested V3
+compiler, V modules and Vulkan headers. The shell wrapper also prepares a
+bootstrap compiler on systems without V. Later runs reuse the cached tools.
 With a window or virtual display available:
 
 ```sh
 # Prepare the compiler, modules and headers.
-bash scripts/build_linux_v3.sh
-tt_toolchain=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/c0449e860641}
+sh scripts/build_linux_v3.sh
+tt_manifest_hash=$(sha256sum compatibility.json | cut -c1-12)
+tt_toolchain=${TT_V3_TOOLCHAIN_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/$tt_manifest_hash}
 export VULKAN_SDK="$tt_toolchain/Vulkan-Headers"
-export VMODULES="$tt_toolchain/modules"
+export VMODULES="$tt_toolchain/modules-$(git hash-object v.mod)"
 export V_MACOS_V3_NO_FALLBACK=1
 
 # After an edit: focused test, build, fixed run, visual review.
 "$tt_toolchain/v/v" -cc gcc test sim/pattern_test.v
-bash scripts/build_linux_v3.sh
+sh scripts/build_linux_v3.sh
 ./torus_trooper --headless --ticks 600 --no-sound --volume 0
 ./torus_trooper --no-sound --volume 0 --debug-view=boundaries,slices,enemies
 

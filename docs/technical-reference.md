@@ -57,18 +57,20 @@ package. Audio initialization failures are logged; the game can continue silentl
 
 ### Linux
 
-Install `git`, `make`, `gcc`, `python3`, `libglfw3-dev`, `libvulkan-dev` and
+Install `git`, `make`, `gcc`, `libglfw3-dev`, `libvulkan-dev` and
 `libvulkan-volk-dev` on Debian or Ubuntu, along with a suitable graphics driver.
 Then build and launch:
 
 ```sh
-bash scripts/build_linux_v3.sh
+sh scripts/build_linux_v3.sh
 ./torus_trooper
 ```
 
-The helper downloads and builds the pinned upstream compiler, then fetches the
-V modules and Vulkan headers into an isolated cache. An existing
-V installation is not required. Later builds reuse that cache.
+If V is on PATH, run `v run scripts/build_linux_v3.vsh` directly. On a clean
+machine, the shell wrapper uses `curl`, `unzip` and `sha256sum` to install a
+checksum-pinned bootstrap compiler into the cache. The V setup builds the
+tested upstream compiler and fetches the matching modules and Vulkan headers.
+Later builds reuse that cache.
 
 The default cache is `${XDG_CACHE_HOME:-$HOME/.cache}/torus-trooper-v3/<manifest-hash>`;
 `TT_V3_TOOLCHAIN_DIR` overrides it. To use the same toolchain for the direct

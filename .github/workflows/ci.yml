@@ -231,9 +231,9 @@ jobs:
                 apt-get install -y --no-install-recommends mesa-vulkan-drivers
                 if dpkg-query -W libglfw3 2>/dev/null; then exit 1; fi
                 tar -xzf /candidate.tar.gz -C /tmp
-                cd /tmp/torus-trooper
-                ./play.sh --headless --ticks 600 --no-sound --volume 0 | grep -F checksum=490efd84cf12692f
-                ./play.sh --probe --no-sound --volume 0
+                cd /tmp
+                /tmp/torus-trooper/torus_trooper --headless --ticks 600 --no-sound --volume 0 | grep -F checksum=490efd84cf12692f
+                /tmp/torus-trooper/torus_trooper --probe --no-sound --volume 0
               "
           '
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

@@ -18,12 +18,12 @@ macOS is not supported.
 Once you have a package:
 
 1. Extract the entire archive into a folder.
-2. On Windows, launch `torus_trooper.exe`. On Linux, run `./play.sh` from a terminal.
+2. On Windows, launch `torus_trooper.exe`. On Linux, run `./torus_trooper` from a terminal.
 3. Choose **Normal** with the arrow keys and press **Space** to start.
 
-Keep the extracted files together. You need a graphics driver with Vulkan support;
-the Linux package includes GLFW and the Vulkan loader. Use `play.sh` to load the
-bundled libraries. The Linux download requires glibc 2.38 or newer, as provided
+Keep the extracted files together. You need a graphics driver with Vulkan support.
+The Linux executable finds its bundled GLFW and Vulkan libraries beside the game.
+The Linux download requires glibc 2.38 or newer, as provided
 by Ubuntu 24.04 and newer distributions.
 If you want to compile the game yourself, see the [build instructions](docs/technical-reference.md#desktop-build-requirements).
 

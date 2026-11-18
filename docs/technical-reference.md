@@ -23,7 +23,7 @@ repository root as the working directory.
 | Platform | Requirements and launch command |
 | --- | --- |
 | Windows 10/11 x64 | A Vulkan-capable graphics driver. Extract the ZIP and launch `torus_trooper.exe`. |
-| Linux x64 | glibc 2.38 or newer and a Vulkan-capable graphics driver. Extract the archive and run `./play.sh`. |
+| Linux x64 | glibc 2.38 or newer and a Vulkan-capable graphics driver. Extract the archive and run `./torus_trooper`. |
 | macOS | Not officially supported. |
 
 The Linux download includes GLFW, the Vulkan loader and X11 support libraries.
@@ -539,7 +539,7 @@ v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc -o torus_trooper .
 
 ### Linux archive
 
-After building, create an archive with its launcher and runtime libraries:
+After building, package the game with its assets and runtime libraries.
 
 ```sh
 v run scripts/package_linux.vsh torus-trooper-linux-x86_64.tar.gz
@@ -547,9 +547,8 @@ v run scripts/package_linux.vsh torus-trooper-linux-x86_64.tar.gz
 
 Packaging requires V, `glslangValidator` or `glslang`, `spirv-val`, `patchelf`,
 and the distribution's installed runtime-library license notices.
-`play.sh` sets the working directory and adds
-`lib/` to the library search path; the executable also has a relative search
-path. Bundled library notices and a version manifest live in
+Run `./torus_trooper` from the extracted directory. The executable locates
+its assets and bundled libraries relative to itself. Bundled library notices and a version manifest live in
 `thirdparty/linux-runtime/`. The graphics driver and glibc remain system dependencies.
 
 ### Windows archive
@@ -561,8 +560,8 @@ v run scripts/package_windows.vsh torus-trooper-windows-x86_64.zip torus_trooper
 Windows packaging requires V, `glslangValidator` or `glslang`, and
 `spirv-val`. Both packagers compile and validate shaders before writing their
 archives, which include runtime assets, documentation and license notices.
-The executable loads `shaders/`, `sounds/` and `models/` relative to its working
-directory, so keep the extracted files together. The CI workflow also builds
+The executable loads `shaders/`, `sounds/` and `models/` from the extracted
+directory, so keep the files together. The CI workflow also builds
 and checks both archive formats.
 
 ## License

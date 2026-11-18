@@ -74,7 +74,7 @@ fn run(args []string) ! {
 	}
 	cache := output('/sbin/ldconfig', ['-p'], work)!
 	mut namespace := base.clone()
-	namespace << ['--chdir', package]
+	namespace << ['--chdir', work]
 	for path in host_library_paths(cache, notices)! {
 		namespace << ['--ro-bind', '/dev/null', path]
 	}
@@ -99,7 +99,7 @@ fn run(args []string) ! {
 	if !headless.contains(reference_checksum) {
 		return error('Unexpected headless output\n${headless}')
 	}
-	probe := output(bwrap, namespace_command(namespace, ['./play.sh', '--probe', '--no-sound',
+	probe := output(bwrap, namespace_command(namespace, [player, '--probe', '--no-sound',
 		'--volume', '0', '--data-file', os.join_path(work, 'player.json')]), work)!
 	if !probe.contains('GLFW: Vulkan surface creation succeeded') {
 		return error('Vulkan probe did not create a GLFW surface\n${probe}')

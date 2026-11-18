@@ -11,13 +11,6 @@ const system_libraries = ['libc.so', 'libm.so', 'libdl.so', 'libpthread.so', 'li
 	'libresolv.so', 'libutil.so']
 const common_license_directory = '/usr/share/common-licenses/'
 const package_directory = 'torus-trooper'
-const launcher = r'#!/bin/sh
-package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
-cd -- "$package_dir" || exit 1
-LD_LIBRARY_PATH="$package_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export LD_LIBRARY_PATH
-exec ./torus_trooper "$@"
-'
 
 struct Library {
 	name   string
@@ -177,9 +170,6 @@ fn package_linux(output string, binary_arg string) ! {
 		os.join_path(root, 'scripts', 'build_shaders.vsh'), '--output-dir', shaders])!)
 	bundle_runtime(package, binary)!
 	command(['patchelf', '--force-rpath', '--set-rpath', r'$ORIGIN/lib', game])!
-	play := os.join_path(package, 'play.sh')
-	os.write_file(play, launcher)!
-	os.chmod(play, 0o755)!
 	os.chmod(game, 0o755)!
 	payload := os.join_path(stage, 'payload.tar.gz')
 	command(['tar', '-C', stage, '-czf', payload, package_directory])!

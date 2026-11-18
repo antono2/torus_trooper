@@ -12,16 +12,17 @@ They intentionally disable compiler fallback. OpenCL must be available; a CPU
 fallback is an error for the compute benchmark.
 
 ```sh
-python3 scripts/benchmark_compute.py --v v --runs 5 --output compute-results.json
+v run scripts/benchmark_compute.vsh --v v --runs 5 --output compute-results.json
 v -cc gcc -o torus_trooper .
 xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
-  python3 scripts/benchmark_renderer.py ./torus_trooper --runs 5 \
+  v run scripts/benchmark_renderer.vsh ./torus_trooper --runs 5 \
   --seconds 3 --output renderer-results.json
 xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
-  python3 scripts/benchmark_pipeline_cache.py ./torus_trooper --runs 5 \
+  v run scripts/benchmark_pipeline_cache.vsh ./torus_trooper --runs 5 \
   --output pipeline-cache-results.json
 ```
 
+The renderer benchmark uses the X11 development headers, Xvfb, and xdotool.
 The compute harness compiles a temporary test in `sim` to exercise the game's
 private kernels directly, then removes it. It launches five fresh processes.
 Each process uses 25 measured particle batches after three warmups per size;
@@ -126,7 +127,7 @@ wins. The cache never decides shader inputs or gameplay state.
 vendor/UUID, missing-parent writes, default-location reuse and blocked cache
 directories under Vulkan validation. The renderer
 benchmark explicitly disables the application cache so warm measurements remain
-comparable. `benchmark_pipeline_cache.py` controls its own isolated cache.
+comparable. `scripts/benchmark_pipeline_cache.vsh` controls its own isolated cache.
 
 ## Opt-in renderer diagnostics
 

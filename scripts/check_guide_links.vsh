@@ -1,6 +1,6 @@
 // Check guide links and fingerprints for documentation that points to source lines.
 import encoding.utf8
-import json
+import x.json2
 import os
 import strings
 
@@ -144,14 +144,14 @@ fn verify(args []string) ! {
 		if errors.len > 0 {
 			return error(errors.join('\n'))
 		}
-		encoded := keys.map('  ${json.encode(it)}: ${json.encode(actual[it])}')
+		encoded := keys.map('  ${json2.encode(it)}: ${json2.encode(actual[it])}')
 		text := if encoded.len == 0 { '{}\n' } else { '{\n${encoded.join(',\n')}\n}\n' }
 		os.write_file(fingerprint_path, text)!
 		println('Recorded ${actual.len} source anchors')
 		return
 	}
 	expected := if os.is_file(fingerprint_path) {
-		json.decode(map[string]string, os.read_file(fingerprint_path)!)!
+		json2.decode[map[string]string](os.read_file(fingerprint_path)!)!
 	} else {
 		map[string]string{}
 	}

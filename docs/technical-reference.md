@@ -494,7 +494,7 @@ v -cc gcc test font5x7 sim runtime
 ### Keyboard and replay interaction
 
 ```sh
-xvfb-run -a bash scripts/test_replay_ui.sh
+xvfb-run -a v run scripts/test_replay_ui.vsh
 ```
 
 This silent check uses temporary player data and covers keyboard menu/resume,

@@ -36,8 +36,7 @@ fn run(args []string) ! {
 fn clone_pinned(url string, revision string, destination string) ! {
 	if os.exists(os.join_path(destination, '.git')) {
 		current := capture(['git', '-C', destination, 'rev-parse', 'HEAD'])!
-		expected := capture(['git', '-C', destination, 'rev-parse', '--verify',
-			'${revision}^{commit}'])!
+		expected := capture(['git', '-C', destination, 'rev-parse', '--verify', '${revision}^{commit}'])!
 		if current != expected {
 			return error('Existing checkout at ${destination} is not at the tested revision ${revision}.')
 		}
@@ -64,6 +63,9 @@ fn verify_volk() ! {
 }
 
 fn build(root string) ! {
+	// V sets VEXE when launching a script. V's Makefile uses it as its output path.
+	os.unsetenv('VEXE')
+	os.setenv('V_C_ERROR_BUG_REPORT_DISABLED', '1', true)
 	for tool in ['git', 'make', 'gcc'] {
 		os.find_abs_path_of_executable(tool) or { return error('Missing build tool: ${tool}') }
 	}
@@ -100,7 +102,6 @@ fn build(root string) ! {
 	os.setenv('VMODULES', modules, true)
 	os.setenv('VULKAN_SDK', headers, true)
 	os.setenv('V_MACOS_V3_NO_FALLBACK', '1', true)
-	os.setenv('V_C_ERROR_BUG_REPORT_DISABLED', '1', true)
 	os.chdir(root)!
 	run([compiler, 'run', 'scripts/check_installed_deps.vsh'])!
 	run([compiler, '-cc', 'gcc', '-o', project_name, '.'])!

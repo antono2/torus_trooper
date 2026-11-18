@@ -8,7 +8,7 @@ disagreement between its direct dependencies and the compatibility manifest.
 The existing dependency checker also verifies the installed transitive graph.
 
 For an upgrade, change the manifest and any affected `v.mod` declaration together.
-Run `python3 scripts/test_distribution.py` and
+Run `v test scripts/releaseconsumer` and
 `v run scripts/compatibility.vsh --platform linux` (or `--platform windows`).
 Require the full application CI, including both package consumers, before
 promoting release assets. A passing module build alone is insufficient.
@@ -35,7 +35,7 @@ manually for a selected release tag. It verifies the archive against that
 release's `SHA256SUMS` before extraction. To test locally:
 
 ```sh
-python3 scripts/test_release_package.py PACKAGE --project torus --checksums SHA256SUMS
+v run scripts/test_release_package.vsh PACKAGE --project torus --checksums SHA256SUMS
 ```
 
 The Windows v0.23.0 package uses working-directory-relative shader paths and can

@@ -34,7 +34,7 @@ fn check_command(path string, args []string) ! {
 }
 
 fn build_shaders(source_directory string, output_directory string, staging string) ! {
-	compiler := shader_tool('glslangValidator')!
+	compiler := shader_tool('glslangValidator') or { shader_tool('glslang')! }
 	validator := shader_tool('spirv-val')!
 	sources :=
 		os.ls(source_directory)!.filter(it.ends_with('.vert') || it.ends_with('.frag')).sorted()

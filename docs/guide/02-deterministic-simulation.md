@@ -173,7 +173,7 @@ recommends reducing the working set or blocking when misses are measured;
 
 `Simulation.checksum` folds selected gameplay fields and exact `f32` bit
 patterns into a 64-bit value. The headless command prints it after the
-requested ticks; [`scripts/check.sh`](../../scripts/check.sh) compares a
+requested ticks; [`scripts/check.vsh`](../../scripts/check.vsh) compares a
 600-tick run with a fixed baseline. Focused tests establish narrower
 contracts, including the generator's reference sequence, independent random
 streams and pool behavior. A checksum detects drift but does not explain it.

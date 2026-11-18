@@ -212,7 +212,7 @@ jobs:
           v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
           v run scripts/test_opencl_runtime.vsh ./torus_trooper_opencl_dynamic_tcc --require-opencl
       - name: Verify deterministic OpenCL headless run
-        run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
+        run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 v run scripts/check.vsh
       - name: Exercise the OpenCL benchmark report
         run: v run scripts/benchmark_compute.vsh --runs 1 --output compute-profile.json
       - name: Package Linux candidate

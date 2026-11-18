@@ -104,7 +104,7 @@ the CPU fallback remains part of the supported configuration.
 The ordinary binary reports `compute_requested=opencl` but
 `compute_active=cpu` when built without `-d opencl_compute`. The
 [`compute_backend_test.v`](../../sim/compute_backend_test.v#L271) and
-[`scripts/check.sh`](../../scripts/check.sh) verify that fallback preserves
+[`scripts/check.vsh`](../../scripts/check.vsh) verify that fallback preserves
 gameplay checksums. The optional `TT_OPENCL_SMOKE=1` gate requires a device
 run and checks its batches. Those are correctness checks, not benchmarks.
 

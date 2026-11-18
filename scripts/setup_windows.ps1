@@ -38,20 +38,14 @@ if (-not $SdkDirectory -or -not (Test-Path -LiteralPath (Join-Path $SdkDirectory
 }
 $SdkDirectory = [IO.Path]::GetFullPath($SdkDirectory)
 if ($Verify) {
-    foreach ($Command in @('python', 'glslangValidator', 'spirv-val')) {
-        if (-not (Get-Command $Command -ErrorAction SilentlyContinue) -and
-            -not (Test-Path -LiteralPath (Join-Path $SdkDirectory "Bin\$Command.exe"))) {
-            throw "Verification requires $Command. Install Python 3 and the Vulkan SDK shader tools."
-        }
-    }
-    $SavedErrorAction = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = 'Continue'
-        $PythonVersion = & python --version 2>&1
-        $PythonExit = $LASTEXITCODE
-    } finally { $ErrorActionPreference = $SavedErrorAction }
-    if ($PythonExit -ne 0 -or "$PythonVersion" -notmatch '^Python 3\.') {
-        throw 'Verification requires a working Python 3 executable on PATH; the Microsoft Store alias is insufficient.'
+    $ShaderCompiler = @('glslangValidator', 'glslang') | Where-Object {
+        (Get-Command $_ -ErrorAction SilentlyContinue) -or
+        (Test-Path -LiteralPath (Join-Path $SdkDirectory "Bin\$_.exe"))
+    } | Select-Object -First 1
+    if (-not $ShaderCompiler -or
+        (-not (Get-Command spirv-val -ErrorAction SilentlyContinue) -and
+        -not (Test-Path -LiteralPath (Join-Path $SdkDirectory 'Bin\spirv-val.exe')))) {
+        throw 'Verification requires glslangValidator (or glslang) and spirv-val from the Vulkan SDK shader tools.'
     }
 }
 if ($Check) {

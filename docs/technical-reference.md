@@ -106,10 +106,9 @@ to choose the cache location. `-SdkDirectory` selects an installed Vulkan SDK.
 Rerunning setup reuses the tested cache. Download and compiler pins live in
 [`compatibility.json`](../compatibility.json).
 
-Use `-Verify` to run the build's software tests, shader checks, headless run and
-graphical Vulkan probe. This additionally requires Python 3 and the SDK shader
-tools. A Vulkan-capable driver and desktop session are needed for the probe;
-the build and headless simulation do not establish graphical hardware support.
+Use `-Verify` to run the software tests, shader checks, headless run and
+graphical Vulkan probe. Install the SDK shader tools for verification and run
+the probe from a desktop session with a Vulkan-capable driver.
 
 For a manually configured toolchain, the existing build helper remains available.
 Open PowerShell with the CI-compatible V3 compiler, MinGW Clang, V modules and
@@ -131,7 +130,7 @@ To build and run the test suite, headless regression and Vulkan probe together:
 .\scripts\build_windows.ps1 -Verify
 ```
 
-Verification also requires Python 3 and the Vulkan SDK shader tools. The Vulkan
+Verification also requires the Vulkan SDK shader tools. The Vulkan
 probe requires a graphics driver and display session.
 
 ### Direct builds
@@ -531,7 +530,7 @@ as project warnings, and the separate V compiler bootstrap is outside this gate.
 Run a checked compilation directly with:
 
 ```sh
-python3 scripts/check_compiler_diagnostics.py -- v -cc gcc -o torus_trooper .
+v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc -o torus_trooper .
 ```
 
 ## Packaging
@@ -557,10 +556,9 @@ path. Bundled library notices and a version manifest live in
 v run scripts/package_windows.vsh torus-trooper-windows-x86_64.zip torus_trooper.exe
 ```
 
-Windows packaging requires Python 3 and the Vulkan SDK shader tools
-(`glslangValidator` and `spirv-val`). Both packagers compile shaders from the
-current source and validate the results before writing the archive. They include
-runtime assets, documentation and license notices.
+Windows packaging requires V, `glslangValidator` or `glslang`, and
+`spirv-val`. Both packagers compile and validate shaders before writing their
+archives, which include runtime assets, documentation and license notices.
 The executable loads `shaders/`, `sounds/` and `models/` relative to its working
 directory, so keep the extracted files together. The CI workflow also builds
 and checks both archive formats.

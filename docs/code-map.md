@@ -60,7 +60,7 @@ Some numbers describe a data format rather than a visual or gameplay preference:
 - [`sim/render_codes.v`](../sim/render_codes.v) and
   [`shaders/render_codes.glsl`](../shaders/render_codes.glsl) name packed object
   families. Shader decoder boundaries include fractional payload ranges.
-  `scripts/test_build_tools.py` checks CPU/GPU constants and menu IDs for drift.
+  `v run scripts/build_shaders.vsh --self-test` checks CPU/GPU constants and menu IDs for drift.
 - Mesh vertex coordinates, font bitmaps, array indices and mathematical
   identities stay close to the algorithms that use them. Their surrounding
   fields and layout comments explain the data; they are not global tuning knobs.

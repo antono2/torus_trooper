@@ -211,7 +211,7 @@ jobs:
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 ./scripts/check.sh
       - name: Package Linux candidate
-        run: bash scripts/package_linux.sh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
+        run: v run scripts/package_linux.vsh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe Linux package without host runtime libraries
         run: xvfb-run -a sudo --preserve-env=DISPLAY,XAUTHORITY bash scripts/test_linux_package.sh torus-trooper-${{ steps.compat.outputs.project_version }}-linux-x86_64.tar.gz
       - name: Probe package on Ubuntu 26.04 without installing GLFW

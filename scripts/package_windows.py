@@ -2,11 +2,11 @@
 """Package a built Windows executable with its assets and license notices."""
 
 import argparse
+import os
 from pathlib import Path
+import subprocess
 from zipfile import ZIP_DEFLATED, ZipFile
 from tempfile import TemporaryDirectory
-
-from build_shaders import build_shaders
 
 
 def main():
@@ -28,7 +28,9 @@ def main():
         files.extend(path for path in sorted((root / directory).rglob("*")) if path.is_file() and path.suffix != ".spv")
     with TemporaryDirectory(prefix="torus-package-shaders-") as temporary:
         shader_directory = Path(temporary)
-        build_shaders(root / "shaders", shader_directory)
+        compiler = os.environ.get("VEXE") or "v"
+        subprocess.run([compiler, "run", str(root / "scripts/build_shaders.vsh"),
+                        "--output-dir", str(shader_directory)], check=True)
         with ZipFile(args.archive, "x", compression=ZIP_DEFLATED) as archive:
             archive.write(args.binary, "torus-trooper/torus_trooper.exe")
             for path in files:

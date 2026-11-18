@@ -10,10 +10,10 @@ fn shader_tool(name string) !string {
 		return path
 	}
 	sdk := os.getenv('VULKAN_SDK')
-	executable := if os.user_os() == 'windows' { name + '.exe' } else { name }
+	tool_filename := if os.user_os() == 'windows' { name + '.exe' } else { name }
 	if sdk != '' {
 		for directory in ['bin', 'Bin'] {
-			candidate := os.join_path(sdk, directory, executable)
+			candidate := os.join_path(sdk, directory, tool_filename)
 			if os.is_file(candidate) && os.is_executable(candidate) {
 				return os.abs_path(candidate)
 			}

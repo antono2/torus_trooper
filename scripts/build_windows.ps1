@@ -80,7 +80,7 @@ try {
         New-Item -ItemType Directory -Path $TestDirectory | Out-Null
         try {
             $DiagnosticFilter = Join-Path $TestDirectory 'check_compiler_diagnostics.exe'
-            & v -cc clang -o $DiagnosticFilter scripts/check_compiler_diagnostics.vsh
+            & v -skip-running -cc clang -o $DiagnosticFilter scripts/check_compiler_diagnostics.vsh
             if ($LASTEXITCODE -ne 0) { throw "Could not build the compiler diagnostic filter." }
             & $DiagnosticFilter --self-test
             if ($LASTEXITCODE -ne 0) { throw "Compiler diagnostic filter tests failed." }

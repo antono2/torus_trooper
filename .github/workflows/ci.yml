@@ -38,14 +38,11 @@ jobs:
           v run scripts/doctor.vsh --self-test
           v run scripts/prepare_release.vsh --self-test
           v run scripts/compatibility.vsh --github-output "$GITHUB_OUTPUT"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: antono2/vulkan
-          ref: ${{ steps.compat.outputs.module_vulkan }}
-          path: ci-inputs/vulkan
       - name: Install software Vulkan runtime for the graphical probe
-        shell: bash
-        run: bash ci-inputs/vulkan/.github/scripts/setup-vulkan-ci.sh ${{ steps.compat.outputs.ci_sdk }} ${{ steps.compat.outputs.ci_runtime }}
+        uses: antono2/vulkan/.github/actions/setup-vulkan-ci@04620525bab9fd843ad3b9046171aaff4dfe3d3c
+        with:
+          sdk-version: ${{ steps.compat.outputs.ci_sdk }}
+          artifact-tag: ${{ steps.compat.outputs.ci_runtime }}
       - name: Test bootstrap and build from a fresh cache
         shell: powershell
         run: |
@@ -336,8 +333,10 @@ jobs:
           v run scripts/check_installed_deps.vsh
           v run scripts/compatibility.vsh --modules modules
       - name: Install Vulkan SDK and SwiftShader test artifacts
-        shell: bash
-        run: bash modules/antono2/vulkan/.github/scripts/setup-vulkan-ci.sh ${{ steps.compat.outputs.ci_sdk }} ${{ steps.compat.outputs.ci_runtime }}
+        uses: antono2/vulkan/.github/actions/setup-vulkan-ci@04620525bab9fd843ad3b9046171aaff4dfe3d3c
+        with:
+          sdk-version: ${{ steps.compat.outputs.ci_sdk }}
+          artifact-tag: ${{ steps.compat.outputs.ci_runtime }}
       - name: Match Vulkan headers to the binding registry
         shell: pwsh
         run: |
@@ -498,10 +497,10 @@ jobs:
           path: downloads
       - name: Install Windows software Vulkan driver
         if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          curl --fail --location --retry 3 https://raw.githubusercontent.com/antono2/vulkan/refs/tags/${{ steps.compat.outputs.module_vulkan }}/.github/scripts/setup-vulkan-ci.sh --output "$RUNNER_TEMP/setup-vulkan-ci.sh"
-          bash "$RUNNER_TEMP/setup-vulkan-ci.sh" ${{ steps.compat.outputs.ci_sdk }} ${{ steps.compat.outputs.ci_runtime }}
+        uses: antono2/vulkan/.github/actions/setup-vulkan-ci@04620525bab9fd843ad3b9046171aaff4dfe3d3c
+        with:
+          sdk-version: ${{ steps.compat.outputs.ci_sdk }}
+          artifact-tag: ${{ steps.compat.outputs.ci_runtime }}
       - name: Test Windows package with runtime-only environment
         if: runner.os == 'Windows'
         shell: pwsh

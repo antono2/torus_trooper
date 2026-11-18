@@ -29,8 +29,8 @@ implementation.
   discussion covers the whole file. Use commit-pinned links only when
   explaining a historical version.
 - After source moves, review and update line anchors, then run
-  `python3 scripts/check_guide_links.py --refresh`. Run
-  `python3 scripts/check_guide_links.py` in the normal guide check; it also
+  `v run scripts/check_guide_links.vsh --refresh`. Run
+  `v run scripts/check_guide_links.vsh` in the normal guide check; it also
   validates local files and Markdown headings. The fingerprint file is
   `.github/guide-source-anchors.json`.
 - Update diagrams when a boundary, order or lifetime changes. Use Mermaid

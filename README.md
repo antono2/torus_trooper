@@ -142,4 +142,4 @@ File introductions identify the boundary each implementation or test exercises.
 The bundled [`thirdparty/`](thirdparty/) sources retain their upstream headers;
 maintain integration comments in the local bridges instead. When moving code or
 adding introductions, update guide line links and run
-`python3 scripts/check_guide_links.py` to catch stale source references.
+`v run scripts/check_guide_links.vsh` to catch stale source references.

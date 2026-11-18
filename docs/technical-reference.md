@@ -553,7 +553,7 @@ path. Bundled library notices and a version manifest live in
 ### Windows archive
 
 ```powershell
-python scripts/package_windows.py torus-trooper-windows-x86_64.zip torus_trooper.exe
+v run scripts/package_windows.vsh torus-trooper-windows-x86_64.zip torus_trooper.exe
 ```
 
 Windows packaging requires Python 3 and the Vulkan SDK shader tools

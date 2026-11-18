@@ -35,7 +35,7 @@ jobs:
         run: |
           python scripts/test_distribution.py
           v run scripts/doctor.vsh --self-test
-          python scripts/test_prepare_release.py
+          v run scripts/prepare_release.vsh --self-test
           python scripts/compatibility.py --github-output "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -426,7 +426,7 @@ jobs:
         shell: pwsh
         run: |
           $Executable = Join-Path $env:RUNNER_TEMP 'torus_trooper.exe'
-          python scripts/package_windows.py torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip $Executable
+          v run scripts/package_windows.vsh torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip $Executable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $Extracted = Join-Path $env:RUNNER_TEMP 'torus-trooper-package'
           Expand-Archive torus-trooper-${{ steps.compat.outputs.project_version }}-windows-x86_64.zip $Extracted

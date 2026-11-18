@@ -9,7 +9,7 @@ binary="$build_dir/torus_trooper"
 
 cd "$repo_dir"
 
-python3 scripts/check_guide_links.py
+v run scripts/check_guide_links.vsh
 
 for removed_legacy_path in game util/gl util/usdl thirdparty/glad \
 	.gitmodules submodule thirdparty/bulletml; do

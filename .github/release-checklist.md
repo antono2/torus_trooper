@@ -5,7 +5,7 @@ Build requirements and diagnostics belong in the technical reference.
 
 ## Verify the release build
 
-- Validate guide links and source anchors with `python3 scripts/check_guide_links.py`.
+- Validate guide links and source anchors with `v run scripts/check_guide_links.vsh`.
 - Compile shader sources and validate the compiled SPIR-V distributed in each package.
 - Require the complete Linux and Windows CI checks to pass for the exact release commit.
   Linux checks include deterministic/OpenCL runs, keyboard menu/resume and replay UI,

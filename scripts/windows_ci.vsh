@@ -1,4 +1,5 @@
-// Run Windows CI checks once the compiler and platform SDK are available.
+// Provision Windows CI tools and run the Windows build and runtime checks.
+import compress.szip
 import os
 import rand
 import scripts.releaseconsumer
@@ -18,7 +19,15 @@ fn required(name string) !string {
 }
 
 fn command(name string, args []string, env map[string]string) ! {
-	program := os.find_abs_path_of_executable(name) or { return error('Cannot find ${name}') }
+	// The Windows PATH resolver probes extensions even on an absolute path.
+	program := if os.is_abs_path(name) {
+		name
+	} else {
+		os.find_abs_path_of_executable(name) or { return error('Cannot find ${name}') }
+	}
+	if !os.is_file(program) {
+		return error('Cannot find executable: ${program}')
+	}
 	mut child := os.new_process(program)
 	defer { child.close() }
 	child.set_args(args)
@@ -114,14 +123,11 @@ fn install_clang(temporary string, env map[string]string) ! {
 	download_verified(required('CLANG_URL')!, required('CLANG_SHA256')!, archive, env)!
 	extracted := os.join_path(work, 'extracted')
 	os.mkdir(extracted)!
-	// Windows tar streams this pinned ZIP. Its expanded size exceeds the
+	// Stream the checksum-verified vendor ZIP. Its expanded size exceeds the
 	// intentionally small limit for game release archives.
-	tar := if os.user_os() == 'windows' {
-		os.join_path(required('SystemRoot')!, 'System32', 'tar.exe')
-	} else {
-		'tar.exe'
+	if !szip.extract_zip_to_dir(archive, extracted)! {
+		return error('Could not extract the verified Clang archive')
 	}
-	command(tar, ['-xf', archive, '-C', extracted], env)!
 	if !os.is_file(os.join_path(extracted, layout, 'bin', 'clang.exe')) {
 		return error('The Clang archive is missing ${layout}/bin/clang.exe')
 	}

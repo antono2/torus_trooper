@@ -149,65 +149,35 @@ jobs:
           ref: ${{ steps.compat.outputs.tcc }}
           path: toolchain/v/thirdparty/tcc
       - name: Build the pinned V3 compiler
-        run: |
-          # V's build registers GitHub problem matchers from its checkout. The
-          # compiler does not need that side effect, and suppressing it avoids
-          # a transient-path bug in setup-v.
-          env -u GITHUB_JOB make -C toolchain/v local=1
-          echo "$GITHUB_WORKSPACE/toolchain/v" >> "$GITHUB_PATH"
+        run: v run scripts/ci_checks.vsh bootstrap
       - name: Check guide links
         run: v run scripts/check_guide_links.vsh
       - name: Verify the declared dependency graph
-        shell: bash
-        run: |
-          v run scripts/check_installed_deps.vsh
-          v run scripts/compatibility.vsh --modules modules
+        run: v run scripts/ci_checks.vsh dependency-graph
       - name: Install native runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libglfw3-dev libvulkan-dev libvulkan-volk-dev mesa-vulkan-drivers vulkan-validationlayers xvfb xdotool x11-utils bubblewrap patchelf libxxf86vm1 libx11-xcb1 ocl-icd-opencl-dev pocl-opencl-icd glslang-tools spirv-tools libx11-dev openbox xauth
+        run: v run scripts/ci_checks.vsh linux-dependencies
       - name: Compile and validate shaders
-        run: |
-          v run scripts/check_compiler_diagnostics.vsh --self-test
-          v run scripts/build_shaders.vsh --self-test
-          v run scripts/build_shaders.vsh
+        run: v run scripts/ci_checks.vsh shaders
       - name: Test deterministic simulation and runtime
-        run: |
-          v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test torus_trooper_test.v
-          v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc test font5x7 sim runtime
+        run: v run scripts/ci_checks.vsh linux-tests
       - name: Compile game
         run: v run scripts/check_compiler_diagnostics.vsh -- v -cc gcc -o torus_trooper .
       - name: Test bounded Linux window startup
-        run: |
-          v -cc tcc -o "$RUNNER_TEMP/window-startup-check" tests/window_startup.v
-          "$RUNNER_TEMP/window-startup-check" "$PWD/torus_trooper" "$RUNNER_TEMP/window-startup-logs" --probe --window --compute cpu --no-sound --volume 0 --data-file "$RUNNER_TEMP/startup-player.cfg"
+        run: v run scripts/ci_checks.vsh linux-startup
       - name: Exercise the Linux setup with manifest pins
-        run: |
-          PATH=/usr/bin:/bin TT_V3_TOOLCHAIN_DIR="$RUNNER_TEMP/Linux toolchain with spaces" sh scripts/build_linux_v3.sh
+        run: v run scripts/ci_checks.vsh linux-setup
       - name: Run Vulkan validation smoke
-        run: |
-          set +e
-          VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation timeout --signal=INT --kill-after=2s 3s xvfb-run -a ./torus_trooper --no-sound --volume 0 --test-effects > validation.log 2>&1
-          status=$?
-          set -e
-          cat validation.log
-          if [[ $status -ne 0 && $status -ne 124 ]]; then exit $status; fi
-          if grep -Eiq 'validation error|vuid-|segmentation|assert|fatal' validation.log; then exit 1; fi
+        run: v run scripts/ci_checks.vsh vulkan-validation
       - name: Verify opt-in GPU profiling and capture labels
-        run: |
-          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/benchmark_renderer.vsh ./torus_trooper --runs 1 --seconds 1 --output gpu-profile.json
-          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/benchmark_pipeline_cache.vsh ./torus_trooper --runs 1 --output cache-profile.json
-          xvfb-run -a env VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation v run scripts/test_pipeline_cache.vsh ./torus_trooper
+        run: v run scripts/ci_checks.vsh profiling
       - name: Compile and smoke test with TinyCC
-        run: v run scripts/check_compiler_diagnostics.vsh -- v -cc tcc -o torus_trooper_tcc . && ./torus_trooper_tcc --headless --ticks 120
+        run: v run scripts/ci_checks.vsh tinycc
       - name: Test OpenCL motion backend
         # V3 currently drops generic buffer typedefs in test files that do not
         # call the optional OpenCL path. Keep those declarations for this suite.
         run: v run scripts/check_compiler_diagnostics.vsh -- v -no-skip-unused -d opencl_compute -cc gcc test sim
       - name: Compile OpenCL backend with TinyCC
-        run: |
-          v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -cc tcc -o torus_trooper_opencl_tcc .
-          ./torus_trooper_opencl_tcc --headless --ticks 120 --compute opencl | grep -F 'compute_active=opencl'
-          v run scripts/check_compiler_diagnostics.vsh -- v -d opencl_compute -d opencl_dynamic -cc tcc -o torus_trooper_opencl_dynamic_tcc .
-          v run scripts/test_opencl_runtime.vsh ./torus_trooper_opencl_dynamic_tcc --require-opencl
+        run: v run scripts/ci_checks.vsh opencl-tinycc
       - name: Verify deterministic OpenCL headless run
         run: xvfb-run -a env TT_OPENCL_SMOKE=1 TT_REPLAY_UI_SMOKE=1 v run scripts/check.vsh
       - name: Exercise the OpenCL benchmark report
@@ -310,10 +280,7 @@ jobs:
       - name: Check guide links
         run: v run scripts/check_guide_links.vsh
       - name: Verify the declared dependency graph
-        shell: bash
-        run: |
-          v run scripts/check_installed_deps.vsh
-          v run scripts/compatibility.vsh --modules modules
+        run: v run scripts/ci_checks.vsh dependency-graph
       - name: Install Vulkan SDK and SwiftShader test artifacts
         uses: antono2/vulkan/.github/actions/setup-vulkan-ci@04620525bab9fd843ad3b9046171aaff4dfe3d3c
         with:

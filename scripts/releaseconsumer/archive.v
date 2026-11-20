@@ -36,8 +36,15 @@ pub fn verify_checksum(archive string, checksums string) ! {
 	if entries.len != 1 {
 		return error('Expected exactly one checksum for ${os.file_name(archive)}')
 	}
+	if file_sha256(archive)! != entries[0] {
+		return error('Checksum mismatch: ${os.file_name(archive)}')
+	}
+}
+
+// file_sha256 hashes a download without loading it all into memory.
+pub fn file_sha256(path string) !string {
 	mut digest := sha256.new()
-	mut file := os.open(archive)!
+	mut file := os.open(path)!
 	defer { file.close() }
 	mut buffer := []u8{len: checksum_block}
 	for {
@@ -52,9 +59,7 @@ pub fn verify_checksum(archive string, checksums string) ! {
 		}
 		digest.write(buffer[..count])!
 	}
-	if digest.sum([]u8{}).hex() != entries[0] {
-		return error('Checksum mismatch: ${os.file_name(archive)}')
-	}
+	return digest.sum([]u8{}).hex()
 }
 
 fn member_name(name string) !string {
@@ -67,9 +72,8 @@ fn member_name(name string) !string {
 			continue
 		}
 		base := part.all_before('.').to_upper_ascii()
-		if part.ends_with('.') || part.ends_with(' ') || base in ['CON', 'PRN', 'AUX', 'NUL', 'COM1',
-			'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3',
-			'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'] {
+		if part.ends_with('.') || part.ends_with(' ')
+			|| base in ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'] {
 			return error('Unsafe archive path: ${name}')
 		}
 		parts << part
@@ -102,13 +106,15 @@ fn zip_directory(data []u8) !int {
 			}
 			size := binary.little_endian_u32_at(data, end + 12)
 			has_locator := end >= 20 && binary.little_endian_u32_at(data, end - 20) == 0x07064b50
-			if has_locator || size == 0xffffffff || binary.little_endian_u32_at(data, end + 16) == 0xffffffff
+			if has_locator || size == 0xffffffff
+				|| binary.little_endian_u32_at(data, end + 16) == 0xffffffff
 				|| binary.little_endian_u16_at(data, end + 10) == 0xffff {
 				if !has_locator || end < 76 {
 					return error('Invalid ZIP64 end record')
 				}
 				record := binary.little_endian_u64_at(data, end - 12)
-				if record > u64(end - 76) || binary.little_endian_u32_at(data, int(record)) != 0x06064b50 {
+				if record > u64(end - 76)
+					|| binary.little_endian_u32_at(data, int(record)) != 0x06064b50 {
 					return error('Invalid ZIP64 end record')
 				}
 				wide_size := binary.little_endian_u64_at(data, int(record) + 40)
@@ -292,6 +298,7 @@ fn tar_members(data []u8) ![]Member {
 				`g` { global = pax_fields(body)! }
 				else { long_name = tar_text(body) }
 			}
+
 			continue
 		}
 		name := tar_text(header[..100])

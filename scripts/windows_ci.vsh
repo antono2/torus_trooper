@@ -1,5 +1,7 @@
-// Run Windows CI checks once the compiler and platform SDK are available.
+// Provision Windows CI tools and run the Windows build and runtime checks.
+import compress.szip
 import os
+import rand
 import scripts.releaseconsumer
 import scripts.testrun
 import scripts.windowsbuild
@@ -17,7 +19,15 @@ fn required(name string) !string {
 }
 
 fn command(name string, args []string, env map[string]string) ! {
-	program := os.find_abs_path_of_executable(name) or { return error('Cannot find ${name}') }
+	// The Windows PATH resolver probes extensions even on an absolute path.
+	program := if os.is_abs_path(name) {
+		name
+	} else {
+		os.find_abs_path_of_executable(name) or { return error('Cannot find ${name}') }
+	}
+	if !os.is_file(program) {
+		return error('Cannot find executable: ${program}')
+	}
 	mut child := os.new_process(program)
 	defer { child.close() }
 	child.set_args(args)
@@ -71,6 +81,91 @@ fn native_cache(env map[string]string) ! {
 	output.writeln('commit=${commit}')!
 }
 
+fn add_path(directory string) ! {
+	if !os.is_dir(directory) || directory.contains_any('\r\n') {
+		return error('Invalid runner PATH directory: ${directory}')
+	}
+	mut output := os.open_append(required('GITHUB_PATH')!)!
+	defer { output.close() }
+	output.writeln(os.abs_path(directory))!
+}
+
+fn download_verified(url string, hash string, destination string, env map[string]string) ! {
+	if hash.len != 64 || !hash.bytes().all(it.is_hex_digit()) {
+		return error('Invalid SHA-256 pin for ${url}')
+	}
+	command('curl.exe', ['--fail', '--silent', '--show-error', '--location', '--retry', '3',
+		'--output', destination, '--', url], env)!
+	if releaseconsumer.file_sha256(destination)! != hash.to_lower_ascii() {
+		return error('Checksum mismatch: ${url}')
+	}
+}
+
+fn tool_staging(temporary string, name string) !string {
+	// Stage beside the final destination so Windows can rename across directories.
+	path := os.join_path(temporary, name + rand.uuid_v4())
+	os.mkdir(path, mode: 0o700)!
+	return path
+}
+
+fn install_clang(temporary string, env map[string]string) ! {
+	layout := required('CLANG_DIRECTORY')!
+	if os.file_name(layout) != layout || layout in ['.', '..'] {
+		return error('Invalid Clang archive directory: ${layout}')
+	}
+	destination := os.join_path(temporary, 'llvm-mingw')
+	if os.exists(destination) || os.is_link(destination) {
+		return error('Clang destination already exists: ${destination}')
+	}
+	work := tool_staging(temporary, 'torus-clang-')!
+	defer { os.rmdir_all(work) or { eprintln(err) } }
+	archive := os.join_path(work, 'llvm-mingw.zip')
+	download_verified(required('CLANG_URL')!, required('CLANG_SHA256')!, archive, env)!
+	extracted := os.join_path(work, 'extracted')
+	os.mkdir(extracted)!
+	// Stream the checksum-verified vendor ZIP. Its expanded size exceeds the
+	// intentionally small limit for game release archives.
+	if !szip.extract_zip_to_dir(archive, extracted)! {
+		return error('Could not extract the verified Clang archive')
+	}
+	if !os.is_file(os.join_path(extracted, layout, 'bin', 'clang.exe')) {
+		return error('The Clang archive is missing ${layout}/bin/clang.exe')
+	}
+	os.rename_dir(extracted, destination)!
+	add_path(os.join_path(destination, layout, 'bin'))!
+}
+
+fn install_shader_tools(temporary string, env map[string]string) ! {
+	version := required('SHADER_SDK_VERSION')!
+	work := tool_staging(temporary, 'torus-shader-sdk-')!
+	defer { os.rmdir_all(work) or { eprintln(err) } }
+	installer := os.join_path(work, 'shader-sdk.exe')
+	url := 'https://sdk.lunarg.com/sdk/download/${version}/windows/vulkansdk-windows-X64-${version}.exe'
+	destination := os.join_path(temporary, 'shader-sdk')
+	if os.exists(destination) || os.is_link(destination) {
+		return error('Shader SDK destination already exists: ${destination}')
+	}
+	download_verified(url, required('SHADER_SDK_SHA256')!, installer, env)!
+	mut installed := false
+	defer {
+		if !installed && os.is_dir(destination) {
+			os.rmdir_all(destination) or { eprintln(err) }
+		}
+	}
+	command(installer, ['--root', destination, '--accept-licenses', '--default-answer',
+		'--confirm-command', 'install', 'copy_only=1'], env)!
+	bin := os.join_path(destination, 'Bin')
+	if !os.is_file(os.join_path(bin, 'glslangValidator.exe'))
+		&& !os.is_file(os.join_path(bin, 'glslang.exe')) {
+		return error('The shader tools SDK does not contain glslang')
+	}
+	if !os.is_file(os.join_path(bin, 'spirv-val.exe')) {
+		return error('The shader tools SDK does not contain spirv-val')
+	}
+	add_path(bin)!
+	installed = true
+}
+
 fn opencl_headers(temporary string, env map[string]string) ! {
 	module_path := os.join_path('modules', 'antono2', 'opencl')
 	revision := os.read_file(os.join_path(module_path, 'HEADERS_COMMIT'))!.trim_space()
@@ -119,6 +214,19 @@ fn run(args []string) ! {
 	env := os.environ()
 	if args.len == 1 {
 		match args[0] {
+			'clang' {
+				install_clang(required('RUNNER_TEMP')!, env)!
+			}
+			'compiler-path' {
+				directory := os.abs_path('toolchain/v')
+				if !os.is_file(os.join_path(directory, 'v.exe')) {
+					return error('The pinned compiler is missing from ${directory}')
+				}
+				add_path(directory)!
+			}
+			'shader-tools' {
+				install_shader_tools(required('RUNNER_TEMP')!, env)!
+			}
 			'sdk-headers' {
 				sdk_headers()!
 			}

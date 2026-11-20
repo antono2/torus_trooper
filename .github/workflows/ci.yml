@@ -459,8 +459,8 @@ jobs:
         with:
           sparse-checkout: |
             scripts/package_consumer_ci.vsh
-            scripts/test_release_package.vsh
             scripts/releaseconsumer/archive.v
+            scripts/releaseconsumer/smoke.v
             scripts/compatibility.vsh
             scripts/compatpins/manifest.v
             compatibility.json

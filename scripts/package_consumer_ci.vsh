@@ -1,6 +1,7 @@
 // Drive package checks on CI hosts and in runtime-only Ubuntu containers.
 import os
 import rand
+import scripts.releaseconsumer
 
 const downloads = 'downloads'
 const logs = 'package-smoke-logs'
@@ -67,10 +68,9 @@ fn windows_consumer(with_checksums bool) ! {
 		return error('VULKAN_SDK must point to the Windows runtime')
 	}
 	checksums := if with_checksums { os.join_path(downloads, checksum_file) } else { '' }
-	mut args := ['run', os.join_path(@DIR, 'test_release_package.vsh')]
-	args << package_args(archive, logs, checksums)
+	mut args := package_args(archive, logs, checksums)
 	args << ['--vulkan-loader', os.join_path(sdk, 'Bin', 'vulkan-1.dll')]
-	run_command(@VEXE, args)!
+	releaseconsumer.smoke(args)!
 }
 
 fn runtime_consumer(profile string, archive string, output string, checksums string) ! {
@@ -97,13 +97,12 @@ fn runtime_consumer(profile string, archive string, output string, checksums str
 	}
 
 	println('Verified runtime package isolation for ${profile}.')
-	tester := os.join_path(os.dir(os.executable()), 'test-release-package')
 	mut args := ['--kill-after=10s', '8m']
 	if profile == 'ubuntu24' {
 		os.setenv('VK_INSTANCE_LAYERS', 'VK_LAYER_KHRONOS_validation', true)
 		args << ['xvfb-run', '-a']
 	}
-	args << tester
+	args << [os.executable(), 'smoke']
 	args << package_args(archive, output, checksums)
 	run_command('timeout', args)!
 }
@@ -122,13 +121,8 @@ fn linux_container(profile string, archive string, with_checksums bool) ! {
 	stage := os.join_path(os.temp_dir(), 'torus-consumer-' + rand.uuid_v4())
 	os.mkdir(stage, mode: 0o700)!
 	defer { os.rmdir_all(stage) or {} }
-	for name, script in {
-		'package-consumer-ci':  @FILE
-		'test-release-package': os.join_path(@DIR, 'test_release_package.vsh')
-	} {
-		run_command(@VEXE, ['-cc', 'gcc', '-skip-running', '-o', os.join_path(stage, name),
-			script])!
-	}
+	runner := os.join_path(stage, 'package-consumer-ci')
+	run_command(@VEXE, ['-cc', 'gcc', '-skip-running', '-o', runner, @FILE])!
 	output := os.abs_path(if profile == 'ubuntu26' { os.join_path(logs, profile) } else { logs })
 	os.mkdir_all(output)!
 	mut args := ['run', '--rm', '--init', '--volume', '${stage}:${consumer}/bin:ro', '--volume',
@@ -186,6 +180,9 @@ fn run(args []string) ! {
 			} else {
 				hidden_runtime(archive)!
 			}
+		}
+		'smoke' {
+			releaseconsumer.smoke(args[1..])!
 		}
 		'runtime' {
 			if args.len != 5 || args[1] !in ['ubuntu24', 'ubuntu26'] { return error(usage) }

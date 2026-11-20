@@ -122,7 +122,7 @@ setup. The helper's verification option runs the test files, headless regression
 and Vulkan probe with the matching compiler flags:
 
 ```powershell
-.\scripts\build_windows.ps1 -Verify
+v run scripts/build_windows.vsh --verify
 .\torus_trooper.exe --no-sound --volume 0 --debug-view=boundaries,slices,enemies
 ```
 

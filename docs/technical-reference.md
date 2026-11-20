@@ -117,7 +117,7 @@ Open PowerShell with the CI-compatible V3 compiler, MinGW Clang, V modules and
 `VULKAN_SDK` configured. The Windows helper expects those tools to be installed:
 
 ```powershell
-.\scripts\build_windows.ps1
+v run scripts/build_windows.vsh
 .\torus_trooper.exe
 ```
 
@@ -125,11 +125,13 @@ The helper finds GLFW through `GLFW_INCLUDE` and `GLFW_LIB`, or through
 `glfw3:x64-mingw-static` in a configured vcpkg installation. It also checks the
 isolated vcpkg checkout used by `antono2.glfw`. Set the two GLFW variables
 explicitly if your installation is elsewhere.
+Existing PowerShell callers can still use `scripts/build_windows.ps1` with
+`-OutputPath` and `-Verify`.
 
 To build and run the test suite, headless regression and Vulkan probe together:
 
 ```powershell
-.\scripts\build_windows.ps1 -Verify
+v run scripts/build_windows.vsh --verify
 ```
 
 Verification also requires the Vulkan SDK shader tools. The Vulkan
@@ -526,7 +528,7 @@ explains the scope of each check and platform-specific development loops.
 ### Compiler diagnostics
 
 CI and `scripts/check.vsh` fail when a game compilation emits a warning or notice
-from maintained project sources. Windows verification (`build_windows.ps1 -Verify`)
+from maintained project sources. Windows verification (`v run scripts/build_windows.vsh --verify`)
 uses the same check. Dependency diagnostics remain visible without being counted
 as project warnings, and the separate V compiler bootstrap is outside this gate.
 Run a checked compilation directly with:

@@ -34,6 +34,7 @@ jobs:
         shell: bash
         run: |
           v test scripts/releaseconsumer
+          v test scripts/windowsdeps
           v run scripts/compatibility.vsh --self-test
           v run scripts/doctor.vsh --self-test
           v run scripts/prepare_release.vsh --self-test

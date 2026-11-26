@@ -79,36 +79,6 @@ if (-not (Test-Path -LiteralPath $VExecutable)) {
     }
 }
 $env:Path = "$VDirectory;$env:Path"
-$HeadersDirectory = Join-Path $CacheDirectory 'Vulkan-Headers'
-$VolkDirectory = Join-Path $CacheDirectory 'volk'
-Get-WindowsSetupCheckout 'https://github.com/KhronosGroup/Vulkan-Headers.git' $Pins.headers $HeadersDirectory
-Get-WindowsSetupCheckout 'https://github.com/zeux/volk.git' $Pins.volk $VolkDirectory
-$ModuleKey = (Get-FileHash -LiteralPath (Join-Path $ProjectDirectory 'v.mod') -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()
-$env:VMODULES = Join-Path $CacheDirectory "modules-$ModuleKey"
-function Install-TTModules([string]$ManifestDirectory) {
-    $Manifest = Get-Content -LiteralPath (Join-Path $ManifestDirectory 'v.mod') -Raw
-    foreach ($Match in [regex]::Matches($Manifest, "'antono2\.([a-z0-9_]+)@([^']+)'")) {
-        $Name = $Match.Groups[1].Value
-        $Tag = $Match.Groups[2].Value
-        $Directory = Join-Path $env:VMODULES "antono2\$Name"
-        $Repository = if ($Name -eq 'vkmemalloc') { 'vulkan_memory_allocator' } else { $Name }
-        Get-WindowsSetupCheckout "https://github.com/antono2/$Repository.git" $Tag $Directory
-        if ($script:ModuleTags.ContainsKey($Name)) {
-            if ($script:ModuleTags[$Name] -ne $Tag) { throw "Conflicting dependency pins for $Name" }
-            continue
-        }
-        $script:ModuleTags[$Name] = $Tag
-        Install-TTModules $Directory
-    }
-}
-$script:ModuleTags = @{}
-Install-TTModules $ProjectDirectory
-$env:V_MACOS_V3_NO_FALLBACK = '1'
-Push-Location $ProjectDirectory
-try { Invoke-WindowsSetupCommand $VExecutable @('run', 'scripts/check_installed_deps.vsh') } finally { Pop-Location }
-
-$GlfwDirectory = Join-Path $CacheDirectory 'glfw'
-Get-WindowsSetupCheckout 'https://github.com/glfw/glfw.git' $Pins.glfw $GlfwDirectory
 $Options = @('run', (Join-Path $PSScriptRoot 'setup_windows_native.vsh'), '--cache', $CacheDirectory, '--sdk', $SdkDirectory, '--output', $OutputPath)
 if ($PrepareOnly) { $Options += '--prepare-only' }
 if ($Verify) { $Options += '--verify' }
@@ -116,3 +86,6 @@ Invoke-WindowsSetupCommand $VExecutable $Options
 $env:VULKAN_SDK = Join-Path $CacheDirectory 'sdk'
 $env:GLFW_INCLUDE = Join-Path $CacheDirectory 'glfw-install\include'
 $env:GLFW_LIB = Join-Path $CacheDirectory 'glfw-install\lib'
+$ModuleKey = (Get-FileHash -LiteralPath (Join-Path $ProjectDirectory 'v.mod') -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()
+$env:VMODULES = Join-Path $CacheDirectory "modules-$ModuleKey"
+$env:V_MACOS_V3_NO_FALLBACK = '1'

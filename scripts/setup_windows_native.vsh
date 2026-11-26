@@ -1,8 +1,13 @@
 // Stage the pinned SDK and build GLFW after the Windows compiler bootstrap.
 import flag
+import crypto.sha256
 import os
 import scripts.compatpins
 import scripts.windowsbuild
+import scripts.windowsdeps
+
+// A short manifest digest gives each dependency set its own cache directory.
+const module_cache_digest_length = 12
 
 fn command(program string, args []string) ! {
 	mut child := os.new_process(os.find_abs_path_of_executable(program)!)
@@ -62,8 +67,22 @@ fn run(args []string) ! {
 		return error(parser.usage())
 	}
 	root := os.dir(@DIR)
-	compatpins.resolve(root, platform: 'windows')!
-	prepare(os.abs_path(cache), os.abs_path(sdk))!
+	pins := compatpins.resolve(root, platform: 'windows')!
+	cache_root := os.abs_path(cache)
+	for dependency in [
+		['Vulkan-Headers', 'https://github.com/KhronosGroup/Vulkan-Headers.git', pins['headers']],
+		['volk', 'https://github.com/zeux/volk.git', pins['volk']],
+		['glfw', 'https://github.com/glfw/glfw.git', pins['glfw']],
+	] {
+		windowsdeps.checkout(dependency[1], dependency[2], os.join_path(cache_root, dependency[0]))!
+	}
+	digest := sha256.sum(os.read_bytes(os.join_path(root, 'v.mod'))!).hex()
+	modules := os.join_path(cache_root, 'modules-' + digest[..module_cache_digest_length])
+	os.setenv('VMODULES', modules, true)
+	os.setenv('V_MACOS_V3_NO_FALLBACK', '1', true)
+	windowsdeps.install_modules(root, modules)!
+	command(@VEXE, ['run', os.join_path(@DIR, 'check_installed_deps.vsh')])!
+	prepare(cache_root, os.abs_path(sdk))!
 	println('Prepared Windows toolchain: ${cache}')
 	if !prepare_only {
 		windowsbuild.build(root, output, verify, os.environ())!

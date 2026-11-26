@@ -83,17 +83,6 @@ $HeadersDirectory = Join-Path $CacheDirectory 'Vulkan-Headers'
 $VolkDirectory = Join-Path $CacheDirectory 'volk'
 Get-WindowsSetupCheckout 'https://github.com/KhronosGroup/Vulkan-Headers.git' $Pins.headers $HeadersDirectory
 Get-WindowsSetupCheckout 'https://github.com/zeux/volk.git' $Pins.volk $VolkDirectory
-$IsolatedSdk = Join-Path $CacheDirectory 'sdk'
-New-Item -ItemType Directory -Force -Path (Join-Path $IsolatedSdk 'Include\volk'), (Join-Path $IsolatedSdk 'Lib') | Out-Null
-Copy-Item -LiteralPath (Join-Path $HeadersDirectory 'include\vulkan'), (Join-Path $HeadersDirectory 'include\vk_video') -Destination (Join-Path $IsolatedSdk 'Include') -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $VolkDirectory 'volk.h'), (Join-Path $VolkDirectory 'volk.c') -Destination (Join-Path $IsolatedSdk 'Include\volk') -Force
-$SourceLibrary = [IO.Path]::GetFullPath((Join-Path $SdkDirectory 'Lib\vulkan-1.lib'))
-$StagedLibrary = [IO.Path]::GetFullPath((Join-Path $IsolatedSdk 'Lib\vulkan-1.lib'))
-if (-not $SourceLibrary.Equals($StagedLibrary, [StringComparison]::OrdinalIgnoreCase)) {
-    Copy-Item -LiteralPath $SourceLibrary -Destination $StagedLibrary -Force
-}
-$env:VULKAN_SDK = $IsolatedSdk
-
 $ModuleKey = (Get-FileHash -LiteralPath (Join-Path $ProjectDirectory 'v.mod') -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()
 $env:VMODULES = Join-Path $CacheDirectory "modules-$ModuleKey"
 function Install-TTModules([string]$ManifestDirectory) {
@@ -119,14 +108,11 @@ Push-Location $ProjectDirectory
 try { Invoke-WindowsSetupCommand $VExecutable @('run', 'scripts/check_installed_deps.vsh') } finally { Pop-Location }
 
 $GlfwDirectory = Join-Path $CacheDirectory 'glfw'
-$GlfwBuild = Join-Path $CacheDirectory 'glfw-build'
-$GlfwInstall = Join-Path $CacheDirectory 'glfw-install'
 Get-WindowsSetupCheckout 'https://github.com/glfw/glfw.git' $Pins.glfw $GlfwDirectory
-Invoke-WindowsSetupCommand cmake @('-S', $GlfwDirectory, '-B', $GlfwBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=clang', "-DCMAKE_INSTALL_PREFIX=$GlfwInstall", '-DBUILD_SHARED_LIBS=OFF', '-DGLFW_BUILD_EXAMPLES=OFF', '-DGLFW_BUILD_TESTS=OFF', '-DGLFW_BUILD_DOCS=OFF')
-Invoke-WindowsSetupCommand cmake @('--build', $GlfwBuild, '--parallel')
-Invoke-WindowsSetupCommand cmake @('--install', $GlfwBuild)
-$env:GLFW_INCLUDE = Join-Path $GlfwInstall 'include'
-$env:GLFW_LIB = Join-Path $GlfwInstall 'lib'
-Write-Host "Prepared Windows toolchain: $CacheDirectory"
-if ($PrepareOnly) { return }
-& (Join-Path $PSScriptRoot 'build_windows.ps1') -OutputPath $OutputPath -Verify:$Verify
+$Options = @('run', (Join-Path $PSScriptRoot 'setup_windows_native.vsh'), '--cache', $CacheDirectory, '--sdk', $SdkDirectory, '--output', $OutputPath)
+if ($PrepareOnly) { $Options += '--prepare-only' }
+if ($Verify) { $Options += '--verify' }
+Invoke-WindowsSetupCommand $VExecutable $Options
+$env:VULKAN_SDK = Join-Path $CacheDirectory 'sdk'
+$env:GLFW_INCLUDE = Join-Path $CacheDirectory 'glfw-install\include'
+$env:GLFW_LIB = Join-Path $CacheDirectory 'glfw-install\lib'
